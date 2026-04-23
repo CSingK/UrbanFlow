@@ -26,4 +26,4 @@ class Trip(Base):
     # Relationships
     driver = relationship("User", foreign_keys=[driver_id])
     rts_slot = relationship("RTSSchedule")
-    passengers = relationship("User", secondary=trip_passengers, backref="passenger_trips")
+    passengers = relationship("User", secondary=trip_passengers, backref="passenger_trips", lazy="selectin")

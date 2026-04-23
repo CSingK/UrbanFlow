@@ -90,9 +90,14 @@ def sim_parking_event():
         return
     zone_id = str(zones_df.sample(1).iloc[0]['id'])
     
-    letters = ''.join(random.choices(string.ascii_uppercase, k=3))
-    numbers = ''.join(random.choices(string.digits, k=4))
-    plate = f"{letters}{numbers}"
+    # 50% chance to re-detect an existing car if any exist
+    existing_logs = fetch_data("SELECT license_plate FROM parking_logs")
+    if not existing_logs.empty and random.random() > 0.5:
+        plate = existing_logs.sample(1).iloc[0]['license_plate']
+    else:
+        letters = ''.join(random.choices(string.ascii_uppercase, k=3))
+        numbers = ''.join(random.choices(string.digits, k=4))
+        plate = f"{letters}{numbers}"
     
     payload = {"image_path": "/mock/camera_feed_02.jpg", "zone_id": zone_id, "license_plate": plate}
     try:
@@ -140,7 +145,17 @@ def view_city_overview():
         st.metric(label="🌱 Total CO₂ Avoided (kg)", value=f"{total_co2_kg:,.2f} kg")
         
     with col2:
-        parking_df = fetch_data("SELECT COUNT(*) as cnt FROM parking_logs WHERE status='illegal'")
+        # Improved logic: Count cars that are EXPLICITLY illegal OR those in grace period whose time has run out
+        violation_query = """
+            SELECT COUNT(*) as cnt 
+            FROM parking_logs l
+            JOIN parking_zones p ON l.zone_id = p.id
+            WHERE l.status = 'illegal' 
+               OR (l.status = 'grace_period' AND 
+                   EXTRACT(EPOCH FROM (NOW() AT TIME ZONE 'UTC' + INTERVAL '8 hours' - l.first_seen)) > 
+                   CASE WHEN p.zone_intensity = 'CRITICAL' THEN 120 ELSE 300 END)
+        """
+        parking_df = fetch_data(violation_query)
         illegals = parking_df.iloc[0]['cnt'] if not parking_df.empty and not pd.isna(parking_df.iloc[0]['cnt']) else 0
         st.metric(label="⚠️ Active Parking Violations", value=illegals)
         
@@ -156,23 +171,27 @@ def view_city_overview():
     else:
         now = get_utc_plus_8()
         
-        # Calculate time remaining
-        def calc_time_remaining(row):
-            if row['status'] == 'grace_period':
-                grace_mins = 2 if row['zone_intensity'] == 'CRITICAL' else 5
-                # Ensure we are using timezone-aware arithmetic 
-                first_seen = pd.to_datetime(row['first_seen'])
-                if first_seen.tzinfo is None:
-                    first_seen = first_seen.tz_localize(timezone.utc)
-                deadline = first_seen + pd.Timedelta(minutes=grace_mins)
-                diff = (deadline - now).total_seconds()
-                if diff > 0:
-                    return f"{int(diff)}s"
-                else:
-                    return "0s"
-            return "-"
+        # Calculate current status and time remaining dynamically
+        def update_row(row):
+            first_seen = pd.to_datetime(row['first_seen'])
+            if first_seen.tzinfo is None:
+                first_seen = first_seen.tz_localize(timezone.utc)
             
-        feed_df['time_remaining'] = feed_df.apply(calc_time_remaining, axis=1)
+            grace_mins = 2 if row['zone_intensity'] == 'CRITICAL' else 5
+            deadline = first_seen + pd.Timedelta(minutes=grace_mins)
+            diff = (deadline - now).total_seconds()
+            
+            if row['status'] == 'grace_period':
+                if diff > 0:
+                    return 'grace_period', f"{int(diff)}s"
+                else:
+                    return 'illegal', "0s"
+            return row['status'], "-"
+            
+        # Apply dynamic status update
+        res_cols = feed_df.apply(update_row, axis=1, result_type='expand')
+        feed_df['status'] = res_cols[0]
+        feed_df['time_remaining'] = res_cols[1]
         
         # Format timestamps safely handling timezone aware objects
         if 'last_seen' in feed_df and not feed_df['last_seen'].empty:
@@ -244,14 +263,14 @@ def view_sustainability_ledger():
         
         st.subheader("Verifiable Carbon Log")
         log_df = fetch_data("""
-            SELECT u.name as user_name, c.category, c.co2_saved_grams, c.created_at
+            SELECT u.name as user_name, c.category, c.co2_saved_grams, c.timestamp
             FROM carbon_ledger c
             JOIN users u ON c.user_id = u.id
-            ORDER BY c.created_at DESC
+            ORDER BY c.timestamp DESC
         """)
         if not log_df.empty:
-            if 'created_at' in log_df and not log_df['created_at'].empty:
-                log_df['created_at'] = pd.to_datetime(log_df['created_at']).dt.strftime('%H:%M:%S')
+            if 'timestamp' in log_df and not log_df['timestamp'].empty:
+                log_df['timestamp'] = pd.to_datetime(log_df['timestamp']).dt.strftime('%H:%M:%S')
             st.dataframe(log_df, use_container_width=True, hide_index=True)
 
 # Main render

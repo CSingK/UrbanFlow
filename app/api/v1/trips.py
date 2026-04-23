@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.schemas.trip import MatchRequest, MatchResponse
 from app.services.matching import create_carpool_match
+from app.services.carbon_ledger import calculate_impact
 
 router = APIRouter()
 
@@ -18,6 +19,9 @@ async def match_carpool(request: MatchRequest, session: AsyncSession = Depends(g
             driver_id=request.driver_id,
             passenger_ids=request.passenger_ids
         )
+        
+        # Automatically calculate CO2 savings and update ledger
+        await calculate_impact(session, trip.id)
         
         overflow_count = len(overflow_ids)
         if overflow_count > 0:
