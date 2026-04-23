@@ -1,0 +1,19 @@
+# Virtual Environment (The 2K+ files)
+venv/
+env/
+ENV/
+
+# Python Cache (Temporary files)
+**/__pycache__/
+*.py[cod]
+
+# Database (Keep your local data off the cloud)
+*.db
+*.sqlite3
+
+# Environment Variables (Passwords/API keys)
+.env
+
+# OS-specific files
+.DS_Store
+Thumbs.db
