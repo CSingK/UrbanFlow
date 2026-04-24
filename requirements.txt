@@ -9,3 +9,8 @@ streamlit==1.33.0
 pandas==2.2.1
 psycopg2-binary==2.9.9
 requests==2.31.0
+google-generativeai
+folium
+streamlit-folium
+plotly
+numpy
