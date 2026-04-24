@@ -2,7 +2,7 @@
 
 AI-powered mobility orchestrator for the **Johor-Singapore Special Economic Zone (JS-SEZ)**. Synchronizing carpools, bus boarding, and smart parking with the RTS Link via a verifiable Carbon Ledger.
 
-Built for the **MyAI Future Hackathon (Track 4: Green Horizon)**.
+Built for the **MyAI Future Hackathon (Track 4: Green Horizon)** using **Antigravity**.
 
 ## Core Features
 - **🛡️ Urban Watch (PBT-Vision)**: Autonomous AI enforcement for parking violations, lane hogging, and illegal driving actions.
