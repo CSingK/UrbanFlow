@@ -1,29 +1,30 @@
 import asyncio
-from app.database import async_session_maker
+# We import exactly what we built in app/database.py
+from app.database import async_session_maker, engine
 from app.models.user import User
 
 async def test_connection():
+    print(f"--- Skeptic Check: Connecting to {engine.url.drivername} ---")
+    
     try:
-        # Open an async session with the database
+        # 1. Open the async session
         async with async_session_maker() as session:
-            # Create a mock user
+            # 2. Create the mock user
             mock_user = User(
                 name="Test Commuter",
                 email="test.commuter@urbanflow.ai",
-                social_cluster_tag="daily_commuter",
-                carbon_credits=15.0
+                social_cluster_tag="daily_commuter"
             )
             
-            # Add the user to the session and commit to the database
+            # 3. Add and Commit
             session.add(mock_user)
             await session.commit()
             
-            print("Connection Successful! Mock user created successfully.")
+            print("✅ SUCCESS! Mock user reached Neon PostgreSQL in Singapore.")
             
     except Exception as e:
-        print(f"Database connection or insertion failed! Error details:")
-        print(e)
+        print("❌ FAILED! The connection is still blocked.")
+        print(f"Error details: {e}")
 
 if __name__ == "__main__":
-    # Since our database operations are asynchronous, we run them using asyncio
     asyncio.run(test_connection())

@@ -6,13 +6,19 @@ ENV/
 # Python Cache (Temporary files)
 **/__pycache__/
 *.py[cod]
+*$py.class
 
 # Database (Keep your local data off the cloud)
 *.db
 *.sqlite3
 
-# Environment Variables (Passwords/API keys)
+# Environment Variables & Secrets (CRITICAL)
 .env
+.env.local
+gcp-key.json
+
+# Google Cloud Keys (Wildcard safety)
+*.json
 
 # OS-specific files
 .DS_Store

@@ -1,6 +1,6 @@
 import streamlit as st
 import folium
-from streamlit_folium import st_folium
+from streamlit_folium import folium_static
 import plotly.graph_objects as go
 import pandas as pd
 import os, sys
@@ -104,7 +104,8 @@ if view_mode == "🚗 Commuter":
         icon=folium.Icon(color="lightblue", icon="user", prefix="fa")
     ).add_to(m)
 
-    st_folium(m, width=1200, height=450, returned_objects=[])
+    # FIX: Use folium_static instead of st_folium to avoid serialization errors
+    folium_static(m, width=1100, height=450)
 
     # ── Smart Reroute ─────────────────────────────────────────────────────────
     st.markdown("---")
@@ -184,7 +185,9 @@ else:
             tooltip=f"{inc['violation']} — {inc['license_plate']}",
             icon=folium.Icon(color=sev_colors.get(inc["severity"], "gray"), icon="exclamation-sign")
         ).add_to(em)
-    st_folium(em, width=1200, height=400, returned_objects=[])
+    
+    # FIX: Use folium_static instead of st_folium
+    folium_static(em, width=1100, height=400)
 
     # ── CCTV Analysis ─────────────────────────────────────────────────────────
     st.markdown("---")

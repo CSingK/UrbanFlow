@@ -1,6 +1,6 @@
 import streamlit as st
 import folium
-from streamlit_folium import st_folium
+from streamlit_folium import folium_static
 import plotly.graph_objects as go
 import pandas as pd
 import os, sys
@@ -106,7 +106,7 @@ if view_mode == "🧑 Commuter":
             sc1, sc2, sc3 = st.columns(3)
             sc1.metric("Solo Cost", f"RM {savings['solo_cost_rm']}")
             sc2.metric("Shared Cost", f"RM {savings['shared_cost_rm']}")
-            sc3.metric("You Save", f"RM {savings['savings_rm']}", delta=f"-{savings['co2_saved_kg']} kg CO₂")
+            sc3.metric("You Save", f"RM {savings['savings_rm']}", delta=f("-{savings['co2_saved_kg']} kg CO₂" if 'co2_saved_kg' in savings else "0 kg CO2"))
 
             # ── Route Map ─────────────────────────────────────────────────
             st.markdown("---")
@@ -125,7 +125,9 @@ if view_mode == "🧑 Commuter":
             if len(route_coords) > 1:
                 folium.PolyLine(route_coords, color="#38bdf8", weight=4, opacity=0.8,
                                 dash_array="10").add_to(rm)
-            st_folium(rm, width=1200, height=400, returned_objects=[])
+            
+            # FIX: Use folium_static for stability
+            folium_static(rm, width=1100, height=400)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # AUTHORITY VIEW
@@ -156,7 +158,9 @@ else:
             fill_color=color, fill_opacity=0.5,
             tooltip=f"{c['neighborhood']}: {c['commuter_count']} commuters (Density: {c['demand_density']})"
         ).add_to(hm)
-    st_folium(hm, width=1200, height=400, returned_objects=[])
+    
+    # FIX: Use folium_static for stability
+    folium_static(hm, width=1100, height=400)
 
     # ── Cluster Table ─────────────────────────────────────────────────────────
     st.markdown("---")

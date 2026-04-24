@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, DateTime, Integer, ForeignKey
+from sqlalchemy import Column, String, DateTime, Integer, ForeignKey, Float
 from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime, timezone, timedelta
 from app.database import Base
@@ -14,6 +14,8 @@ class ParkingZone(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     zone_name = Column(String, nullable=False, unique=True)
     zone_intensity = Column(String, default="NORMAL") # "NORMAL" or "CRITICAL"
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
 
 class ParkingLog(Base):
     __tablename__ = "parking_logs"

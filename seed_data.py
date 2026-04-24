@@ -27,14 +27,14 @@ async def seed_data():
         session.add_all([driver, p1, p2, p3, p4])
         
         print("Seeding Bus Stations...")
-        station1 = BusStation(station_name="JS-SEZ Main Station", bus_capacity=40, current_bus_occupancy=10)
-        station2 = BusStation(station_name="Larkin Hub", bus_capacity=40, current_bus_occupancy=35)
+        station1 = BusStation(station_name="JS-SEZ Main Station", latitude=1.4550, longitude=103.7610, bus_capacity=40, current_bus_occupancy=10)
+        station2 = BusStation(station_name="Larkin Hub", latitude=1.4950, longitude=103.7430, bus_capacity=40, current_bus_occupancy=35)
         
         session.add_all([station1, station2])
         
         print("Seeding Parking Zones...")
-        zone_normal = ParkingZone(zone_name="JB Sentral Drop-off", zone_intensity="NORMAL")
-        zone_critical = ParkingZone(zone_name="RTS Express Lane", zone_intensity="CRITICAL")
+        zone_normal = ParkingZone(zone_name="JB Sentral Drop-off", latitude=1.4628, longitude=103.7644, zone_intensity="NORMAL")
+        zone_critical = ParkingZone(zone_name="RTS Express Lane", latitude=1.4650, longitude=103.7660, zone_intensity="CRITICAL")
         
         session.add_all([zone_normal, zone_critical])
         

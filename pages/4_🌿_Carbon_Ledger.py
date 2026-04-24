@@ -1,6 +1,6 @@
 import streamlit as st
 import folium
-from streamlit_folium import st_folium
+from streamlit_folium import folium_static
 import plotly.graph_objects as go
 import pandas as pd
 import os, sys
@@ -184,7 +184,9 @@ else:
             popup=folium.Popup(popup_html, max_width=250),
             tooltip=f"{z['name']}: {z['daily_emission_kg']} kg/day (↓{z['reduction_pct']}%)"
         ).add_to(em)
-    st_folium(em, width=1200, height=400, returned_objects=[])
+    
+    # FIX: Use folium_static
+    folium_static(em, width=1100, height=400)
 
     # ── Monthly Trend ─────────────────────────────────────────────────────────
     st.markdown("---")

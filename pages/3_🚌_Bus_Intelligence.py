@@ -1,6 +1,6 @@
 import streamlit as st
 import folium
-from streamlit_folium import st_folium
+from streamlit_folium import folium_static
 import plotly.graph_objects as go
 import pandas as pd
 import os, sys
@@ -153,7 +153,9 @@ else:
         if s["is_rts"]:
             folium.Marker(s["coords"], tooltip="🚆 RTS Terminal",
                           icon=folium.Icon(color="red", icon="train", prefix="fa")).add_to(sm)
-    st_folium(sm, width=1200, height=400, returned_objects=[])
+    
+    # FIX: Use folium_static
+    folium_static(sm, width=1100, height=400)
 
     # ── Station Table ─────────────────────────────────────────────────────────
     st.markdown("---")

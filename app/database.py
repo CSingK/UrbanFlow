@@ -1,27 +1,49 @@
 import os
-from typing import AsyncGenerator
-
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from dotenv import load_dotenv
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
 
-# Fallback to a local PostgreSQL or an SQLite async fallback if not specified
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://user:password@localhost/urbanflow")
+# 1. Force load the .env from the current directory
+load_dotenv(override=True) 
 
-# Create async engine
+# 2. Extract and Validate the Database URL
+raw_url = os.getenv("DATABASE_URL")
+
+# --- OBSERVABILITY: Verify the connection type in terminal ---
+if raw_url:
+    print(f"--- [CLOUD ARCHITECT] Connecting to: {raw_url[:15]}... ---")
+else:
+    print("--- [ERROR] DATABASE_URL NOT FOUND IN .ENV! ---")
+
+# --- STRICT REQUIREMENT: No Fallbacks / No SQLite ---
+if not raw_url or "sqlite" in raw_url:
+    raise ValueError(
+        "CRITICAL ERROR: DATABASE_URL is missing or pointing to SQLite. "
+        "Production Migration requires a valid Neon PostgreSQL connection string."
+    )
+
+# 3. TRANSFORM: Inject the Async Driver (asyncpg)
+# SQLAlchemy 2.0 requires the driver to be explicitly named in the string.
+DATABASE_URL = raw_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+# 4. NEON SSL CONFIG: Required for serverless cloud connections
 engine = create_async_engine(
     DATABASE_URL,
-    echo=True,  # Set to False in production
+    echo=False,  # Set to True only for deep debugging
+    connect_args={"ssl": True} if "neon.tech" in DATABASE_URL else {}
 )
 
-# Async session factory
+# 5. COMPLIANCE: SQLAlchemy 2.0 async_sessionmaker
+# We map the standard class to your app-specific variable name.
 async_session_maker = async_sessionmaker(
-    engine, class_=AsyncSession, expire_on_commit=False
+    engine, 
+    expire_on_commit=False, 
+    class_=AsyncSession
 )
 
-# Base class for all SQLAlchemy declarative models
 Base = declarative_base()
 
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """Dependency for getting async DB session in FastAPI routes."""
+async def get_db():
+    """Dependency for getting async DB sessions in FastAPI routes."""
     async with async_session_maker() as session:
         yield session
