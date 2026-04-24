@@ -15,10 +15,10 @@ def analyze_cctv_image(image_path: str) -> Dict[str, Any]:
         
     genai.configure(api_key=api_key)
     
-    # Use gemini-1.5-flash for high-speed inference as requested
-    # We enforce JSON output generation natively
+    # Use the model version specified in .env (e.g., gemini-2.5-flash)
+    model_name = os.environ.get("AI_MODEL_NAME", "gemini-1.5-flash")
     model = genai.GenerativeModel(
-        'gemini-1.5-flash',
+        model_name,
         generation_config={"response_mime_type": "application/json"}
     )
     

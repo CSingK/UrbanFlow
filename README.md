@@ -5,7 +5,7 @@ AI-powered mobility orchestrator for the **Johor-Singapore Special Economic Zone
 Built for the **MyAI Future Hackathon (Track 4: Green Horizon)** using **Antigravity**.
 
 ## Core Features
-- **🛡️ Urban Watch (PBT-Vision)**: Autonomous AI enforcement for parking violations, lane hogging, and illegal driving actions.
+- **🛡️ Urban Watch (PBT-Vision)**: Autonomous AI enforcement for parking violations, lane hogging, and illegal driving actions powered by **Gemini 2.5 Flash**.
 - **🚗 Carpool Agent**: AI-driven matching to reduce single-occupancy vehicles on the Causeway.
 - **🚌 Bus Intelligence**: Real-time transit optimization for first-mile/last-mile connectivity.
 - **🌿 National Carbon Ledger**: A verifiable system to reward sustainable mobility choices.
