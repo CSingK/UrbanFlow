@@ -1,9 +1,14 @@
 # UrbanFlow
-<<<<<<< HEAD
-AI-powered mobility orchestrator for JS-SEZ. Synchronizing carpools, bus boarding, and smart parking with the RTS Link via a verifiable Carbon Ledger.
-=======
 
-for the MyAI Future Hackathon (Track 4: Green Horizon) focusing on the Johor-Singapore Innovation Corridor (JS-SEZ).
+AI-powered mobility orchestrator for the **Johor-Singapore Special Economic Zone (JS-SEZ)**. Synchronizing carpools, bus boarding, and smart parking with the RTS Link via a verifiable Carbon Ledger.
+
+Built for the **MyAI Future Hackathon (Track 4: Green Horizon)**.
+
+## Core Features
+- **🛡️ Urban Watch (PBT-Vision)**: Autonomous AI enforcement for parking violations, lane hogging, and illegal driving actions.
+- **🚗 Carpool Agent**: AI-driven matching to reduce single-occupancy vehicles on the Causeway.
+- **🚌 Bus Intelligence**: Real-time transit optimization for first-mile/last-mile connectivity.
+- **🌿 National Carbon Ledger**: A verifiable system to reward sustainable mobility choices.
 
 ## Project Structure
 This application follows a standard FastAPI structure:
@@ -20,7 +25,7 @@ The database uses PostgreSQL via asynchronous SQLAlchemy (`asyncpg`). All primar
 The models included are:
 - `users`
 - `rts_schedules`
-- `trips` (connected via a `trip_passengers` junction table to `users`)
+- `trips`
 - `bus_stations`
 - `carbon_ledger`
 
@@ -37,4 +42,8 @@ The models included are:
    ```bash
    uvicorn app.main:app --reload
    ```
->>>>>>> 8854e15 (initial commit)
+
+3. Run the Streamlit Dashboard:
+   ```bash
+   streamlit run dashboard.py
+   ```

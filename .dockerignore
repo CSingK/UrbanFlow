@@ -1,0 +1,13 @@
+venv
+.git
+.gitignore
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.db
+.pytest_cache
+.vscode
+.idea
+.env
+gcp-key.json
