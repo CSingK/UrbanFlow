@@ -23,3 +23,13 @@ gcp-key.json
 # OS-specific files
 .DS_Store
 Thumbs.db
+
+# Web dependencies & Build artifacts
+node_modules/
+dist/
+build/
+.next/
+
+# Frontend specific
+UrbanFlow/frontend/node_modules/
+UrbanFlow/frontend/dist/
