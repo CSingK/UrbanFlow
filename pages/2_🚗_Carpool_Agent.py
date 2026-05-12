@@ -106,7 +106,7 @@ if view_mode == "🧑 Commuter":
             sc1, sc2, sc3 = st.columns(3)
             sc1.metric("Solo Cost", f"RM {savings['solo_cost_rm']}")
             sc2.metric("Shared Cost", f"RM {savings['shared_cost_rm']}")
-            sc3.metric("You Save", f"RM {savings['savings_rm']}", delta=f("-{savings['co2_saved_kg']} kg CO₂" if 'co2_saved_kg' in savings else "0 kg CO2"))
+            sc3.metric("You Save", f"RM {savings['savings_rm']}", delta=f"-{savings['co2_saved_kg']} kg CO₂" if 'co2_saved_kg' in savings else "0 kg CO2")
 
             # ── Route Map ─────────────────────────────────────────────────
             st.markdown("---")
