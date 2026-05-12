@@ -7,9 +7,13 @@ import os, sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from modules.parking_engine import get_live_occupancy, get_nearest_green_hub, generate_enforcement_log
+from modules.ui_components import inject_side_nav
 import vision_engine
 
 st.set_page_config(page_title="Smart Parking | PBT-Vision", layout="wide", initial_sidebar_state="expanded")
+
+# Inject Custom Side Nav
+inject_side_nav()
 
 # ── Shared CSS ────────────────────────────────────────────────────────────────
 st.markdown("""
@@ -30,11 +34,13 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🅿️ Urban Enforcement & Smart Parking")
+st.title("Urban Enforcement & Smart Parking")
 st.markdown("Green Zone navigation, real-time occupancy monitoring, and autonomous enforcement.")
 
 # ── Sidebar — Mode Toggle ────────────────────────────────────────────────────
 with st.sidebar:
+    # Spacer to avoid overlap with custom nav
+    st.markdown("<div style='margin-top: 100px;'></div>", unsafe_allow_html=True)
     st.header("🅿️ Parking Control")
     view_mode = st.radio("View Mode", ["🚗 Commuter", "🛡️ Authority"], index=0)
     st.markdown("---")

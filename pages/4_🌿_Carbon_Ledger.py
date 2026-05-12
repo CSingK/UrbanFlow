@@ -10,8 +10,12 @@ from modules.carbon_ledger import (
     get_sample_personal_data, calculate_city_impact, get_emissions_heatmap_data,
     get_monthly_trend, get_carbon_stats, REWARD_TIERS
 )
+from modules.ui_components import inject_side_nav
 
 st.set_page_config(page_title="Carbon Ledger | PBT-Vision", layout="wide", initial_sidebar_state="expanded")
+
+# Inject Custom Side Nav
+inject_side_nav()
 
 st.markdown("""
 <style>
@@ -27,10 +31,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🌿 National Carbon Ledger")
+st.title("National Carbon Ledger")
 st.markdown("Real-time verifiable CO₂ accounting — personal offset scores and city-wide impact tracking for Net-Zero 2050.")
 
 with st.sidebar:
+    # Spacer to avoid overlap with custom nav
+    st.markdown("<div style='margin-top: 100px;'></div>", unsafe_allow_html=True)
     st.header("🌿 Carbon Control")
     view_mode = st.radio("View Mode", ["🧑 Commuter", "🏛️ Authority"], index=0)
     st.markdown("---")

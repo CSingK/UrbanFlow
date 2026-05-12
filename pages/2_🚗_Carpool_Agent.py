@@ -10,8 +10,12 @@ from modules.carpool_engine import (
     match_carpool, get_demand_clusters, get_carpool_stats,
     NEIGHBORHOODS, RTS_SCHEDULE
 )
+from modules.ui_components import inject_side_nav
 
 st.set_page_config(page_title="Carpool Agent | PBT-Vision", layout="wide", initial_sidebar_state="expanded")
+
+# Inject Custom Side Nav
+inject_side_nav()
 
 st.markdown("""
 <style>
@@ -27,10 +31,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🚗 AI-Synchronized Carpool Agent")
+st.title("AI-Synchronized Carpool Agent")
 st.markdown("Intelligent carpool matching synchronized with RTS train schedules for first-mile/last-mile optimization.")
 
 with st.sidebar:
+    # Spacer to avoid overlap with custom nav
+    st.markdown("<div style='margin-top: 100px;'></div>", unsafe_allow_html=True)
     st.header("🚗 Carpool Control")
     view_mode = st.radio("View Mode", ["🧑 Commuter", "🏛️ Authority"], index=0)
     st.markdown("---")

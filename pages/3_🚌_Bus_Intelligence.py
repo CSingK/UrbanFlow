@@ -10,8 +10,12 @@ from modules.bus_intelligence import (
     predict_pob, get_all_stations_overview, generate_dispatch_alerts,
     get_historical_trend, get_bus_stats, BUS_STATIONS
 )
+from modules.ui_components import inject_side_nav
 
 st.set_page_config(page_title="Bus Intelligence | PBT-Vision", layout="wide", initial_sidebar_state="expanded")
+
+# Inject Custom Side Nav
+inject_side_nav()
 
 st.markdown("""
 <style>
@@ -27,10 +31,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🚌 Predictive Bus Intelligence")
+st.title("Predictive Bus Intelligence")
 st.markdown("Live **Probability of Boarding (PoB)** scores, queue monitoring, and dynamic dispatch recommendations.")
 
 with st.sidebar:
+    # Spacer to avoid overlap with custom nav
+    st.markdown("<div style='margin-top: 100px;'></div>", unsafe_allow_html=True)
     st.header("🚌 Bus Control")
     view_mode = st.radio("View Mode", ["🧑 Commuter", "🏛️ Authority"], index=0)
     st.markdown("---")

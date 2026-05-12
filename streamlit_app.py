@@ -13,6 +13,7 @@ from modules.parking_engine import get_live_occupancy
 from modules.carpool_engine import get_carpool_stats
 from modules.bus_intelligence import get_bus_stats
 from modules.carbon_ledger import get_carbon_stats, calculate_city_impact
+from modules.ui_components import inject_side_nav
 
 # Configure page
 st.set_page_config(
@@ -20,6 +21,9 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Inject Custom Side Nav
+inject_side_nav()
 
 # Custom CSS for Dark-Mode & Glassmorphism
 st.markdown("""
@@ -99,7 +103,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Main Title
-st.title("🏙️ PBT-Vision: Johor Smart City Platform")
+st.title("PBT-Vision: Johor Smart City Platform")
 st.markdown("Real-time monitoring and predictive analytics for urban management in Johor Bahru JS-SEZ.")
 
 # ── Top-Level Stats ───────────────────────────────────────────────────────────
@@ -168,7 +172,8 @@ st.markdown("---")
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.header("Control Panel")
+    # Spacer to avoid overlap with our custom nav header
+    st.markdown("<div style='margin-top: 100px;'></div>", unsafe_allow_html=True)
     
     st.subheader("📊 Urban Impact Analytics")
     selected_metric = st.selectbox("Select Metric", ["Traffic Flow", "Air Quality", "Waste Management", "Energy Usage"])

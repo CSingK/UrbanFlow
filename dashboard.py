@@ -12,8 +12,12 @@ sys.path.insert(0, os.path.dirname(__file__))
 from modules.carbon_ledger import calculate_city_impact
 from modules.bus_intelligence import get_bus_stats
 from modules.parking_engine import get_live_occupancy
+from modules.ui_components import inject_side_nav
 
 st.set_page_config(page_title="UrbanFlow | Smart City Orchestrator", layout="wide")
+
+# Inject Custom Side Nav
+inject_side_nav()
 
 # ── Custom CSS for the Logo Page ─────────────────────────────────────────────
 st.markdown("""
@@ -81,13 +85,13 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ── Sidebar ──────────────────────────────────────────────────────────────────
-st.sidebar.markdown("<div style='text-align:center; padding: 1rem;'><h2 style='color:#38bdf8;'>🏙️ UrbanFlow</h2></div>", unsafe_allow_html=True)
-st.sidebar.markdown("---")
-st.sidebar.info("Welcome. Navigate through the core mobility modules above.")
-st.sidebar.markdown("---")
-st.sidebar.caption(f"System Time: {datetime.now().strftime('%H:%M:%S')}")
-st.sidebar.caption("Node: JS-SEZ-JB-01")
+with st.sidebar:
+    # Spacer to avoid overlap
+    st.markdown("<div style='margin-top: 100px;'></div>", unsafe_allow_html=True)
+    st.info("Welcome. Navigate through the core mobility modules above.")
+    st.markdown("---")
+    st.sidebar.caption(f"System Time: {datetime.now().strftime('%H:%M:%S')}")
+    st.sidebar.caption("Node: JS-SEZ-JB-01")
 
 # ── Main Content ─────────────────────────────────────────────────────────────
 st.markdown("<div class='hero-container'>", unsafe_allow_html=True)
