@@ -13,8 +13,6 @@ from modules.bus_intelligence import (
 from modules.ui_components import inject_side_nav
 
 st.set_page_config(page_title="Bus Intelligence | PBT-Vision", layout="wide", initial_sidebar_state="expanded")
-
-# Inject Custom Side Nav
 inject_side_nav()
 
 st.markdown("""
@@ -31,12 +29,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("Predictive Bus Intelligence")
+st.title("🚌 Predictive Bus Intelligence")
 st.markdown("Live **Probability of Boarding (PoB)** scores, queue monitoring, and dynamic dispatch recommendations.")
 
 with st.sidebar:
-    # Spacer to avoid overlap with custom nav
-    st.markdown("<div style='margin-top: 100px;'></div>", unsafe_allow_html=True)
     st.header("🚌 Bus Control")
     view_mode = st.radio("View Mode", ["🧑 Commuter", "🏛️ Authority"], index=0)
     st.markdown("---")
@@ -163,9 +159,10 @@ else:
     # FIX: Use folium_static
     folium_static(sm, width=1100, height=400)
 
-    # ── Station Table ─────────────────────────────────────────────────────────
+    # ── Bus Stations Overview ─────────────────────────────────────────────────
     st.markdown("---")
-    st.subheader("📊 Station Status Table")
+    st.subheader("📋 Bus Stations Overview")
+    overview = get_all_stations_overview()
     df = pd.DataFrame(overview)
     df_show = df[["station_name", "queue_count", "avg_pob", "routes_served", "status"]].copy()
     df_show.columns = ["Station", "Queue", "Avg PoB %", "Routes", "Status"]

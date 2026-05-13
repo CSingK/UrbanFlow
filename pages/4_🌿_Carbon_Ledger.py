@@ -13,8 +13,6 @@ from modules.carbon_ledger import (
 from modules.ui_components import inject_side_nav
 
 st.set_page_config(page_title="Carbon Ledger | PBT-Vision", layout="wide", initial_sidebar_state="expanded")
-
-# Inject Custom Side Nav
 inject_side_nav()
 
 st.markdown("""
@@ -31,12 +29,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("National Carbon Ledger")
+st.title("🌿 National Carbon Ledger")
 st.markdown("Real-time verifiable CO₂ accounting — personal offset scores and city-wide impact tracking for Net-Zero 2050.")
 
 with st.sidebar:
-    # Spacer to avoid overlap with custom nav
-    st.markdown("<div style='margin-top: 100px;'></div>", unsafe_allow_html=True)
     st.header("🌿 Carbon Control")
     view_mode = st.radio("View Mode", ["🧑 Commuter", "🏛️ Authority"], index=0)
     st.markdown("---")
@@ -194,10 +190,10 @@ else:
     # FIX: Use folium_static
     folium_static(em, width=1100, height=400)
 
-    # ── Monthly Trend ─────────────────────────────────────────────────────────
+    # ── Monthly Trends ────────────────────────────────────────────────────────
     st.markdown("---")
-    st.subheader("📈 Monthly CO₂ Savings Trend")
-    trend = get_monthly_trend(6)
+    st.subheader("📈 Monthly CO₂ Prevented Trend")
+    trend = get_monthly_trend()
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=[t["month"] for t in trend], y=[t["baseline_tonnes"] for t in trend],
