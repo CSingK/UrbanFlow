@@ -10,10 +10,11 @@ from modules.carpool_engine import (
     match_carpool, get_demand_clusters, get_carpool_stats,
     NEIGHBORHOODS, RTS_SCHEDULE
 )
-from modules.ui_components import inject_side_nav
+from modules.ui_components import inject_side_nav, inject_global_ui, synthetic_fluctuation
 
 st.set_page_config(page_title="Carpool Agent | PBT-Vision", layout="wide", initial_sidebar_state="expanded")
 inject_side_nav()
+inject_global_ui("carpool")
 
 st.markdown("""
 <style>
@@ -32,16 +33,21 @@ st.markdown("""
 st.title("🚗 AI-Synchronized Carpool Agent")
 st.markdown("Intelligent carpool matching synchronized with RTS train schedules for first-mile/last-mile optimization.")
 
-with st.sidebar:
-    st.header("🚗 Carpool Control")
-    view_mode = st.radio("View Mode", ["🧑 Commuter", "🏛️ Authority"], index=0)
-    st.markdown("---")
-    stats = get_carpool_stats()
-    st.metric("Active Carpools Today", stats["active_carpools_today"])
-    st.metric("Commuters Matched", stats["commuters_matched"])
-    st.metric("On-Time Rate", stats["on_time_rate"])
-    st.markdown("---")
+view_mode = "🧑 Commuter" if st.session_state.get("global_view_mode", "Commuter") == "Commuter" else "🏛️ Authority"
+
+stats = get_carpool_stats()
+active_carpools = synthetic_fluctuation(stats["active_carpools_today"], 0.05, "carpool_active")
+commuters_matched = synthetic_fluctuation(stats["commuters_matched"], 0.04, "carpool_matched")
+on_time_rate = synthetic_fluctuation(stats["on_time_rate"], 0.01, "carpool_ontime")
+
+st.markdown("---")
+c1, c2, c3, c4 = st.columns(4)
+c1.metric("Active Carpools Today", int(active_carpools) if isinstance(active_carpools, float) else active_carpools)
+c2.metric("Commuters Matched", int(commuters_matched) if isinstance(commuters_matched, float) else commuters_matched)
+c3.metric("On-Time Rate", on_time_rate)
+with c4:
     st.info("🚆 RTS Link: Online\n\n🛰️ Routes API: Connected")
+st.markdown("---")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # COMMUTER VIEW
@@ -49,23 +55,20 @@ with st.sidebar:
 if view_mode == "🧑 Commuter":
     st.subheader("🎯 Set Your Target Train")
 
-    col_input1, col_input2, col_input3 = st.columns(3)
+    col_input1, col_input2 = st.columns(2)
     with col_input1:
         neighborhood = st.selectbox("Your Neighborhood", [n["name"] for n in NEIGHBORHOODS])
     with col_input2:
         # Show a subset of trains for usability
         morning_trains = [t for t in RTS_SCHEDULE if t.startswith(("07", "08", "09"))]
         target_train = st.selectbox("Target RTS Train", morning_trains, index=3)
-    with col_input3:
-        flexibility = st.slider("Flexibility (± minutes)", 5, 30, 15)
-
     if st.button("🔍 Find Carpool Matches", use_container_width=True):
-        result = match_carpool(neighborhood, target_train, flexibility)
+        result = match_carpool(neighborhood, target_train)
 
         if "error" in result:
             st.error(result["error"])
         elif not result["matches"]:
-            st.warning("No matches found. Try increasing flexibility or choosing a different time.")
+            st.warning("No matches found. Try choosing a different train time or neighborhood.")
         else:
             # ── Match Results ─────────────────────────────────────────────
             st.success(f"✅ Found {len(result['matches'])} matches for the **{result['target_train']}** RTS train!")
@@ -141,10 +144,10 @@ else:
 
     # ── Metrics ───────────────────────────────────────────────────────────────
     ac1, ac2, ac3, ac4 = st.columns(4)
-    ac1.metric("Neighborhoods Tracked", len(clusters))
-    ac2.metric("Total Commuters", sum(c["commuter_count"] for c in clusters))
+    ac1.metric("Neighborhoods Tracked", synthetic_fluctuation(len(clusters), 0.02, "carpool_neighborhoods"))
+    ac2.metric("Total Commuters", synthetic_fluctuation(sum(c["commuter_count"] for c in clusters), 0.03, "carpool_total_commuters"))
     ac3.metric("Avg Peak Hour", f"{sum(c['avg_target_hour'] for c in clusters)/len(clusters):.0f}:00")
-    ac4.metric("CO₂ Saved Today", f"{stats['co2_saved_today_kg']} kg")
+    ac4.metric("CO₂ Saved Today", synthetic_fluctuation(f"{stats['co2_saved_today_kg']} kg", 0.04, "carpool_co2_saved"))
 
     # ── Demand Heatmap ────────────────────────────────────────────────────────
     st.markdown("---")

@@ -1,6 +1,8 @@
 import base64
+import datetime
 import math
 import os
+import random
 import sys
 from pathlib import Path
 
@@ -13,10 +15,11 @@ import streamlit_folium as streamlit_folium_module
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from modules.parking_engine import get_live_occupancy, get_nearest_green_hub, generate_enforcement_log
-from modules.ui_components import inject_side_nav
+from modules.ui_components import inject_side_nav, inject_global_ui, synthetic_fluctuation
 
 st.set_page_config(page_title="Smart Parking | PBT-Vision", layout="wide", initial_sidebar_state="expanded")
 inject_side_nav()
+inject_global_ui("parking")
 
 ASSET_DIR = Path(__file__).resolve().parent.parent / "assets"
 DEFAULT_MODEL_PATH = ASSET_DIR / "parking_lot_uf.glb"
@@ -28,6 +31,49 @@ def _zone_status_color(status: str) -> str:
     if status == "LOW":
         return "#f97316"
     return "#ef4444"
+
+
+def _sensor_status_color(utilization: float) -> str:
+    if utilization >= 0.85:
+        return "#ef4444"
+    if utilization >= 0.65:
+        return "#f97316"
+    return "#22c55e"
+
+
+def _render_zone_sensor_cloud(m: folium.Map, zones: list[dict]) -> None:
+    """Render many localized IoT sensor points around each zone for a denser, realistic map."""
+    seed = f"parking-sensors::{datetime.datetime.now().strftime('%Y%m%d%H%M')}"
+    rng = random.Random(seed)
+
+    for z in zones:
+        lat, lng = z["coords"]
+        base_util = z["occupied"] / z["total_lots"] if z["total_lots"] else 0.5
+
+        # Denser zones produce more points; keeps map rich without overloading UI.
+        sensor_count = max(10, min(30, int(z["total_lots"] / 18)))
+        radius_scale = 0.0012 if z["type"] in ("CIQ Zone", "RTS Terminal", "Premium") else 0.0016
+
+        for _ in range(sensor_count):
+            angle = rng.uniform(0, 2 * math.pi)
+            dist = radius_scale * (rng.random() ** 1.6)
+            d_lat = math.cos(angle) * dist
+            d_lng = math.sin(angle) * dist
+
+            local_util = max(0.08, min(0.99, base_util + rng.uniform(-0.22, 0.22)))
+            color = _sensor_status_color(local_util)
+
+            folium.CircleMarker(
+                location=[lat + d_lat, lng + d_lng],
+                radius=3,
+                color=color,
+                fill=True,
+                fill_color=color,
+                fill_opacity=0.88,
+                opacity=0.9,
+                weight=1,
+                tooltip=f"{z['name']} sensor · {int(local_util * 100)}% occupied",
+            ).add_to(m)
 
 
 def _extract_click_coords(map_state: dict) -> tuple[float | None, float | None]:
@@ -68,10 +114,9 @@ def _load_model_bytes(uploaded_model):
 def _render_model_view(model_bytes: bytes, zone: dict) -> None:
     encoded_model = base64.b64encode(model_bytes).decode("ascii")
     empty_pct = (zone["available"] / zone["total_lots"] * 100) if zone["total_lots"] else 0
-    green_intensity = min(empty_pct / 100 * 0.6, 0.6)
+    
     components.html(
         f"""
-        <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
         <style>
             .viewer-shell {{
                 position: relative;
@@ -80,6 +125,8 @@ def _render_model_view(model_bytes: bytes, zone: dict) -> None:
                 background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.96));
                 border: 1px solid rgba(255, 255, 255, 0.08);
                 box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+                height: 540px;
+                width: 100%;
             }}
             .viewer-badge {{
                 position: absolute;
@@ -112,17 +159,13 @@ def _render_model_view(model_bytes: bytes, zone: dict) -> None:
                 backdrop-filter: blur(12px);
                 box-shadow: 0 0 20px rgba(34, 197, 94, 0.5);
             }}
-            model-viewer {{
+            #three-container {{
                 width: 100%;
-                height: 540px;
+                height: 100%;
                 background: radial-gradient(circle at top, rgba(56, 189, 248, 0.14), rgba(15, 23, 42, 0.96));
-                filter: drop-shadow(0 0 25px rgba(34, 197, 94, {green_intensity})) brightness(1.1);
-                transition: filter 0.3s ease;
-            }}
-            model-viewer:hover {{
-                filter: drop-shadow(0 0 35px rgba(34, 197, 94, {green_intensity + 0.1})) brightness(1.15);
             }}
         </style>
+        
         <div class="viewer-shell">
             <div class="viewer-badge">
                 {zone["name"]} · {zone["occupied"]} occupied, {zone["available"]} empty
@@ -130,18 +173,166 @@ def _render_model_view(model_bytes: bytes, zone: dict) -> None:
             <div class="empty-indicator">
                 🟢 {empty_pct:.0f}% Empty Parking
             </div>
-            <model-viewer
-                src="data:model/gltf-binary;base64,{encoded_model}"
-                camera-controls
-                auto-rotate
-                shadow-intensity="1"
-                exposure="1.05"
-                interaction-prompt="none"
-                environment-image="neutral"
-                ar
-                ar-modes="webxr scene-viewer quick-look"
-            ></model-viewer>
+            <div id="three-container"></div>
         </div>
+
+        <script type="importmap">
+          {{
+            "imports": {{
+              "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+              "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }}
+          }}
+        </script>
+
+        <script type="module">
+            import * as THREE from 'three';
+            import {{ GLTFLoader }} from 'three/addons/loaders/GLTFLoader.js';
+            import {{ OrbitControls }} from 'three/addons/controls/OrbitControls.js';
+
+            const container = document.getElementById('three-container');
+            const scene = new THREE.Scene();
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+            directionalLight.position.set(5, 10, 5);
+            scene.add(directionalLight);
+
+            const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({{ antialias: true, alpha: true }});
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            const controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 1.0;
+
+            const loader = new GLTFLoader();
+            const base64Data = "data:model/gltf-binary;base64,{encoded_model}";
+            const glowingPlanes = [];
+
+            loader.load(base64Data, (gltf) => {{
+                const model = gltf.scene;
+                scene.add(model);
+                
+                // Center model and set camera
+                const box = new THREE.Box3().setFromObject(model);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+                const maxDim = Math.max(size.x, size.y, size.z);
+                
+                camera.position.set(center.x + maxDim * 0.8, center.y + maxDim * 1.0, center.z + maxDim * 1.2);
+                camera.lookAt(center);
+                controls.target.copy(center);
+                
+                // Find ReservedParking nodes
+                const reservedNodes = [];
+                model.traverse((child) => {{
+                    if (child.isMesh && child.name.includes("ReservedParking")) {{
+                        reservedNodes.push(child);
+                    }}
+                }});
+                
+                // Grid-based slot glow implementation
+                if (reservedNodes.length > 0) {{
+                    const node = reservedNodes[0];
+                    node.geometry.computeBoundingBox();
+                    const bbox = node.geometry.boundingBox;
+                    const min = bbox.min;
+                    const max = bbox.max;
+
+                    // Grid dimensions (customize as needed)
+                    const rows = 2;
+                    const cols = 10;
+                    const slotWidth = (max.x - min.x) / cols;
+                    const slotDepth = (max.z - min.z) / rows;
+
+                    // Derive per-slot empty status
+                    const totalSlots = rows * cols;
+                    const emptyCount = Math.min({zone["available"]}, totalSlots);
+                    const slotStatus = Array(totalSlots).fill(false);
+                    for (let i = 0; i < emptyCount; i++) {{
+                        slotStatus[i] = true; // true = empty = should glow
+                    }}
+
+                    // Create glowing box for each grid cell
+                    for (let r = 0; r < rows; r++) {{
+                        for (let c = 0; c < cols; c++) {{
+                            const idx = r * cols + c;
+                            const isEmpty = slotStatus[idx];
+                            if (!isEmpty) continue; // Skip occupied slots
+
+                            // Box geometry (slightly smaller than cell for margin)
+                            const boxGeom = new THREE.BoxGeometry(slotWidth * 0.95, 0.12, slotDepth * 0.95);
+
+                            // Core glowing mesh
+                            const coreMat = new THREE.MeshBasicMaterial({{
+                                color: 0x22C55E,
+                                transparent: true,
+                                opacity: 0.0,
+                                side: THREE.DoubleSide,
+                                blending: THREE.AdditiveBlending,
+                                depthWrite: false
+                            }});
+                            const glowBox = new THREE.Mesh(boxGeom, coreMat);
+
+                            // Outline border
+                            const edgesGeom = new THREE.EdgesGeometry(boxGeom);
+                            const lineMat = new THREE.LineBasicMaterial({{
+                                color: 0x4ade80,
+                                linewidth: 4,
+                                transparent: true,
+                                opacity: 0.0,
+                                blending: THREE.AdditiveBlending,
+                                depthWrite: false
+                            }});
+                            const border = new THREE.LineSegments(edgesGeom, lineMat);
+                            glowBox.add(border);
+
+                            // Position in world space
+                            const x = min.x + (c + 0.5) * slotWidth;
+                            const z = min.z + (r + 0.5) * slotDepth;
+                            glowBox.position.set(x, 0.05, z);
+
+                            scene.add(glowBox);
+                            glowingPlanes.push({{ 
+                                core: glowBox, 
+                                border: border, 
+                                offset: Math.random() * Math.PI * 2 
+                            }});
+                        }}
+                    }}
+                }}
+
+                // Animation loop
+                let time = 0;
+                function animate() {{
+                    requestAnimationFrame(animate);
+                    controls.update();
+                    
+                    time += 0.04;
+                    glowingPlanes.forEach(p => {{
+                        const pulse = (Math.sin(time + p.offset) + 1) / 2;
+                        p.core.material.opacity = 0.2 + (pulse * 0.4);
+                        p.border.material.opacity = 0.4 + (pulse * 0.6);
+                    }});
+                    
+                    renderer.render(scene, camera);
+                }}
+                animate();
+
+                // Handle resize
+                window.addEventListener('resize', () => {{
+                    camera.aspect = container.clientWidth / container.clientHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(container.clientWidth, container.clientHeight);
+                }});
+            }});
+        </script>
         """,
         height=580,
     )
@@ -316,56 +507,45 @@ st.markdown("""
 st.title("🅿️ Urban Enforcement & Smart Parking")
 st.markdown("Green Zone navigation, real-time occupancy monitoring, and autonomous enforcement.")
 
-# ── Sidebar — Mode Toggle ────────────────────────────────────────────────────
-with st.sidebar:
-    st.header("🅿️ Parking Control")
-    view_mode = st.radio("View Mode", ["🚗 Commuter", "🛡️ Authority"], index=0)
-    st.markdown("---")
-    if view_mode == "🚗 Commuter":
-        st.subheader("📍 Your Location")
-        user_loc = st.selectbox(
-            "Starting Point",
-            [
-                "JB City Center",
-                "CIQ / Customs",
-                "Taman Pelangi",
-                "Taman Molek",
-                "Skudai",
-                "Iskandar Puteri",
-                "Mount Austin",
-            ],
-        )
-        loc_map = {
-            "JB City Center": (1.4927, 103.7414),
-            "CIQ / Customs": (1.4635, 103.7639),
-            "Taman Pelangi": (1.4850, 103.7560),
-            "Taman Molek": (1.5320, 103.7860),
-            "Skudai": (1.5370, 103.6550),
-            "Iskandar Puteri": (1.4272, 103.6158),
-            "Mount Austin": (1.5480, 103.7930),
-        }
-        user_coords = loc_map.get(user_loc, (1.4927, 103.7414))
-    else:
-        st.subheader("🔧 Enforcement Filters")
-        severity_filter = st.multiselect(
-            "Severity",
-            ["Low", "Medium", "High", "Critical"],
-            default=["High", "Critical"],
-        )
-    st.markdown("---")
-    st.info("🛰️ IoT Sensors: Online\n\n📡 LoRaWAN: Connected")
+view_mode = "🚗 Commuter" if st.session_state.get("global_view_mode", "Commuter") == "Commuter" else "🛡️ Authority"
 
 # ══════════════════════════════════════════════════════════════════════════════
 # COMMUTER VIEW
 # ══════════════════════════════════════════════════════════════════════════════
 if view_mode == "🚗 Commuter":
+    st.subheader("📍 Your Location")
+    user_loc = st.selectbox(
+        "Starting Point",
+        [
+            "JB City Center",
+            "CIQ / Customs",
+            "Taman Pelangi",
+            "Taman Molek",
+            "Skudai",
+            "Iskandar Puteri",
+            "Mount Austin",
+        ],
+    )
+    loc_map = {
+        "JB City Center": (1.4927, 103.7414),
+        "CIQ / Customs": (1.4635, 103.7639),
+        "Taman Pelangi": (1.4850, 103.7560),
+        "Taman Molek": (1.5320, 103.7860),
+        "Skudai": (1.5370, 103.6550),
+        "Iskandar Puteri": (1.4272, 103.6158),
+        "Mount Austin": (1.5480, 103.7930),
+    }
+    user_coords = loc_map.get(user_loc, (1.4927, 103.7414))
+
     zones = get_live_occupancy()
     st.session_state.setdefault("selected_parking_zone", zones[0]["id"])
 
     # ── Live Parking Map ──────────────────────────────────────────────────────
     st.subheader("🗺️ Live Parking Zone Map")
-    st.caption("Click a parking circle to inspect that zone and load the 3D parking lot preview.")
+    st.caption("Dense IoT sensor cloud: green=available, orange=busy, red=near full. Click a zone circle to inspect and load the 3D preview.")
     m = folium.Map(location=[1.4800, 103.7200], zoom_start=12, tiles="cartodbdark_matter")
+
+    _render_zone_sensor_cloud(m, zones)
 
     for z in zones:
         popup_html = f"""
@@ -481,16 +661,28 @@ if view_mode == "🚗 Commuter":
 # ══════════════════════════════════════════════════════════════════════════════
 else:
     st.subheader("🛡️ Autonomous Enforcement Dashboard")
+    
+    st.markdown("---")
+    st.subheader("🔧 Enforcement Filters")
+    severity_filter = st.multiselect(
+        "Severity",
+        ["Low", "Medium", "High", "Critical"],
+        default=["High", "Critical"],
+    )
 
     incidents = generate_enforcement_log(15)
     filtered = [inc for inc in incidents if inc["severity"] in severity_filter]
 
     # ── Metrics ───────────────────────────────────────────────────────────────
+    total_incidents = synthetic_fluctuation(len(incidents), 0.08, "parking_total_incidents")
+    critical_incidents = synthetic_fluctuation(sum(1 for i in incidents if i["severity"] == "Critical"), 0.10, "parking_critical_incidents")
+    sent_to_pdrm = synthetic_fluctuation(sum(1 for i in incidents if i["status"] == "Sent to PDRM"), 0.10, "parking_sent_pdrm")
+    fines_issued = synthetic_fluctuation(sum(1 for i in incidents if i["status"] == "Fine Issued"), 0.10, "parking_fines_issued")
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Total Incidents", len(incidents))
-    c2.metric("Critical", sum(1 for i in incidents if i["severity"] == "Critical"))
-    c3.metric("Sent to PDRM", sum(1 for i in incidents if i["status"] == "Sent to PDRM"))
-    c4.metric("Fines Issued", sum(1 for i in incidents if i["status"] == "Fine Issued"))
+    c1.metric("Total Incidents", max(1, int(total_incidents)))
+    c2.metric("Critical", max(0, int(critical_incidents)))
+    c3.metric("Sent to PDRM", max(0, int(sent_to_pdrm)))
+    c4.metric("Fines Issued", max(0, int(fines_issued)))
 
     # ── Incident Table ────────────────────────────────────────────────────────
     st.markdown("---")

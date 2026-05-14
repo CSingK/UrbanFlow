@@ -10,10 +10,11 @@ from modules.carbon_ledger import (
     get_sample_personal_data, calculate_city_impact, get_emissions_heatmap_data,
     get_monthly_trend, get_carbon_stats, REWARD_TIERS
 )
-from modules.ui_components import inject_side_nav
+from modules.ui_components import inject_side_nav, inject_global_ui, synthetic_fluctuation
 
 st.set_page_config(page_title="Carbon Ledger | PBT-Vision", layout="wide", initial_sidebar_state="expanded")
 inject_side_nav()
+inject_global_ui("carbon")
 
 st.markdown("""
 <style>
@@ -26,23 +27,52 @@ st.markdown("""
     div[data-testid="metric-container"]:hover { box-shadow: 0 0 15px rgba(56,189,248,0.3);
         transition: all 0.3s ease; }
     h1,h2,h3,h4,h5,h6 { color: #f8fafc !important; font-family: 'Inter', sans-serif; }
+
+    .reward-tier-card {
+        border-radius: 10px;
+        padding: 0.8rem;
+        margin-bottom: 0.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: rgba(30,41,59,0.3);
+        border: 1px solid rgba(255,255,255,0.1);
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    }
+
+    .reward-tier-card:hover {
+        border-color: rgba(34,197,94,0.9);
+        box-shadow: 0 0 0 1px rgba(34,197,94,0.35), 0 8px 22px rgba(34,197,94,0.16);
+        transform: translateY(-1px);
+    }
+
+    .reward-tier-card.reward-tier-active {
+        background: rgba(34,197,94,0.08);
+        border: 1px solid rgba(255,255,255,0.12);
+    }
 </style>
 """, unsafe_allow_html=True)
 
 st.title("🌿 National Carbon Ledger")
 st.markdown("Real-time verifiable CO₂ accounting — personal offset scores and city-wide impact tracking for Net-Zero 2050.")
 
-with st.sidebar:
-    st.header("🌿 Carbon Control")
-    view_mode = st.radio("View Mode", ["🧑 Commuter", "🏛️ Authority"], index=0)
-    st.markdown("---")
-    c_stats = get_carbon_stats()
-    st.metric("CO₂ Prevented Today", c_stats["co2_prevented_today"])
-    st.metric("Green Commuters", f"{c_stats['active_green_commuters']:,}")
-    st.metric("Credits Issued", c_stats["credits_issued_today"])
-    st.metric("Net-Zero Progress", c_stats["net_zero_progress"])
-    st.markdown("---")
+view_mode = "🧑 Commuter" if st.session_state.get("global_view_mode", "Commuter") == "Commuter" else "🏛️ Authority"
+
+c_stats = get_carbon_stats()
+co2_prevented = synthetic_fluctuation(c_stats["co2_prevented_today"], 0.04, "carbon_co2_today")
+green_commuters = synthetic_fluctuation(c_stats['active_green_commuters'], 0.03, 'carbon_green_commuters')
+credits_issued = synthetic_fluctuation(c_stats["credits_issued_today"], 0.06, "carbon_credits_issued")
+net_zero = synthetic_fluctuation(c_stats["net_zero_progress"], 0.015, "carbon_net_zero_progress")
+
+st.markdown("---")
+c1, c2, c3, c4, c5 = st.columns(5)
+c1.metric("CO₂ Prevented Today", co2_prevented)
+c2.metric("Green Commuters", f"{int(green_commuters) if isinstance(green_commuters, float) else green_commuters:,}")
+c3.metric("Credits Issued", credits_issued)
+c4.metric("Net-Zero Progress", net_zero)
+with c5:
     st.info("🌍 Ledger: Verified\n\n📊 BigQuery: Connected")
+st.markdown("---")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # COMMUTER VIEW
@@ -120,11 +150,9 @@ if view_mode == "🧑 Commuter":
     st.subheader("🏆 Reward Tiers")
     for t in REWARD_TIERS:
         is_current = t["name"] == tier["name"]
-        border = f"2px solid {t['color']}" if is_current else "1px solid rgba(255,255,255,0.1)"
-        bg = f"rgba(34,197,94,0.1)" if is_current else "rgba(30,41,59,0.3)"
+        active_cls = " reward-tier-active" if is_current else ""
         st.markdown(f"""
-        <div style="background:{bg};border:{border};border-radius:10px;padding:0.8rem;
-                    margin-bottom:0.5rem;display:flex;justify-content:space-between;align-items:center;">
+        <div class="reward-tier-card{active_cls}">
             <div>
                 <b style="color:{t['color']};">{t['name']}</b>
                 <span style="color:#94a3b8;"> — {t['min_kg']}–{t['max_kg'] if t['max_kg']<99999 else '∞'} kg</span>
@@ -138,6 +166,7 @@ if view_mode == "🧑 Commuter":
 # ══════════════════════════════════════════════════════════════════════════════
 else:
     city = calculate_city_impact()
+    city_tonnes = synthetic_fluctuation(city['co2_prevented_today_tonnes'], 0.03, "carbon_city_tonnes")
 
     # ── Hero Counter ──────────────────────────────────────────────────────────
     st.markdown(f"""
@@ -146,7 +175,7 @@ else:
                 text-align:center; margin-bottom:1.5rem;">
         <div style="color:#94a3b8;font-size:1rem;">CO₂ PREVENTED TODAY</div>
         <div style="font-size:4rem;font-weight:bold;color:#22c55e;">
-            {city['co2_prevented_today_tonnes']} tonnes
+            {city_tonnes:.2f} tonnes
         </div>
         <div style="color:#94a3b8;margin-top:0.5rem;">
             🌳 = {city['equivalent_trees']:.0f} trees | 🚗 = {city['equivalent_cars_off_road']:.0f} cars off road

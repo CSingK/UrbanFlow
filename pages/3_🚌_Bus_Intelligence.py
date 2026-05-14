@@ -10,10 +10,11 @@ from modules.bus_intelligence import (
     predict_pob, get_all_stations_overview, generate_dispatch_alerts,
     get_historical_trend, get_bus_stats, BUS_STATIONS
 )
-from modules.ui_components import inject_side_nav
+from modules.ui_components import inject_side_nav, inject_global_ui, synthetic_fluctuation
 
 st.set_page_config(page_title="Bus Intelligence | PBT-Vision", layout="wide", initial_sidebar_state="expanded")
 inject_side_nav()
+inject_global_ui("bus")
 
 st.markdown("""
 <style>
@@ -32,17 +33,23 @@ st.markdown("""
 st.title("🚌 Predictive Bus Intelligence")
 st.markdown("Live **Probability of Boarding (PoB)** scores, queue monitoring, and dynamic dispatch recommendations.")
 
-with st.sidebar:
-    st.header("🚌 Bus Control")
-    view_mode = st.radio("View Mode", ["🧑 Commuter", "🏛️ Authority"], index=0)
-    st.markdown("---")
-    bus_stats = get_bus_stats()
-    st.metric("Stations Monitored", bus_stats["total_stations_monitored"])
-    st.metric("Active Routes", bus_stats["active_routes"])
-    st.metric("Avg City PoB", bus_stats["avg_pob_city"])
-    st.metric("Surge Alerts Today", bus_stats["surge_alerts_today"])
-    st.markdown("---")
-    st.info("📹 ITMax CCTV: 2,500+ feeds\n\n🤖 BigQuery ML: Active")
+view_mode = "🧑 Commuter" if st.session_state.get("global_view_mode", "Commuter") == "Commuter" else "🏛️ Authority"
+
+bus_stats = get_bus_stats()
+stations_monitored = synthetic_fluctuation(bus_stats["total_stations_monitored"], 0.01, "bus_stations_monitored")
+active_routes = synthetic_fluctuation(bus_stats["active_routes"], 0.03, "bus_active_routes")
+avg_pob = synthetic_fluctuation(bus_stats["avg_pob_city"], 0.02, "bus_avg_pob")
+surge_alerts = synthetic_fluctuation(bus_stats["surge_alerts_today"], 0.10, "bus_surge_alerts")
+
+st.markdown("---")
+c1, c2, c3, c4, c5 = st.columns(5)
+c1.metric("Stations Monitored", int(stations_monitored) if isinstance(stations_monitored, float) else stations_monitored)
+c2.metric("Active Routes", int(active_routes) if isinstance(active_routes, float) else active_routes)
+c3.metric("Avg City PoB", avg_pob)
+c4.metric("Surge Alerts", int(surge_alerts) if isinstance(surge_alerts, float) else surge_alerts)
+with c5:
+    st.info("📹 CCTV: 2,500+\n\n🤖 BigQuery: Active")
+st.markdown("---")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # COMMUTER VIEW
@@ -136,10 +143,10 @@ else:
     # ── Metrics Row ───────────────────────────────────────────────────────────
     oc1, oc2, oc3, oc4 = st.columns(4)
     surge_count = sum(1 for s in overview if "Surge" in s["status"])
-    oc1.metric("Stations in Surge", surge_count)
-    oc2.metric("Avg Queue City-Wide", f"{sum(s['queue_count'] for s in overview)//len(overview)}")
-    oc3.metric("Relief Buses Deployed", bus_stats["relief_buses_deployed"])
-    oc4.metric("Commuters Served Today", f"{bus_stats['commuters_served_today']:,}")
+    oc1.metric("Stations in Surge", synthetic_fluctuation(surge_count, 0.15, "bus_stations_surge"))
+    oc2.metric("Avg Queue City-Wide", f"{synthetic_fluctuation(sum(s['queue_count'] for s in overview)//len(overview), 0.08, 'bus_avg_queue')}")
+    oc3.metric("Relief Buses Deployed", synthetic_fluctuation(bus_stats["relief_buses_deployed"], 0.12, "bus_relief_deployed"))
+    oc4.metric("Commuters Served Today", f"{synthetic_fluctuation(bus_stats['commuters_served_today'], 0.03, 'bus_commuters_served'):,}")
 
     # ── Station Map ───────────────────────────────────────────────────────────
     st.markdown("---")

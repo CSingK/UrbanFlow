@@ -13,7 +13,7 @@ from modules.parking_engine import get_live_occupancy
 from modules.carpool_engine import get_carpool_stats
 from modules.bus_intelligence import get_bus_stats
 from modules.carbon_ledger import get_carbon_stats, calculate_city_impact
-from modules.ui_components import inject_side_nav
+from modules.ui_components import inject_side_nav, inject_global_ui, synthetic_fluctuation
 
 # Configure page
 st.set_page_config(
@@ -24,6 +24,7 @@ st.set_page_config(
 
 # Inject Custom Side Nav
 inject_side_nav()
+inject_global_ui("streamlit_app")
 
 # Custom CSS for Dark-Mode & Glassmorphism
 st.markdown("""
@@ -113,11 +114,14 @@ bus_stats = get_bus_stats()
 carbon_stats = get_carbon_stats()
 
 c1, c2, c3, c4 = st.columns(4)
-total_parking = sum(z["available"] for z in parking_zones)
+total_parking = synthetic_fluctuation(sum(z["available"] for z in parking_zones), 0.04, "home_total_parking")
+active_carpools = synthetic_fluctuation(carpool_stats["active_carpools_today"], 0.05, "home_active_carpools")
+avg_city_pob = synthetic_fluctuation(bus_stats["avg_pob_city"], 0.02, "home_avg_city_pob")
+co2_today = synthetic_fluctuation(carbon_stats["co2_prevented_today"], 0.03, "home_co2_today")
 c1.metric("🅿️ Parking Lots Available", total_parking, f"{len(parking_zones)} zones")
-c2.metric("🚗 Active Carpools", carpool_stats["active_carpools_today"], carpool_stats["on_time_rate"])
-c3.metric("🚌 Avg City PoB", bus_stats["avg_pob_city"], f"{bus_stats['active_routes']} routes")
-c4.metric("🌿 CO₂ Prevented Today", carbon_stats["co2_prevented_today"])
+c2.metric("🚗 Active Carpools", active_carpools, carpool_stats["on_time_rate"])
+c3.metric("🚌 Avg City PoB", avg_city_pob, f"{bus_stats['active_routes']} routes")
+c4.metric("🌿 CO₂ Prevented Today", co2_today)
 
 st.markdown("---")
 
@@ -157,12 +161,13 @@ with fc3:
 
 with fc4:
     city_impact = calculate_city_impact()
+    net_zero_progress = synthetic_fluctuation(city_impact["net_zero_2050_progress"], 0.015, "home_net_zero")
     st.markdown("""
     <div class="feature-card">
         <div class="feature-icon">🌿</div>
         <div class="feature-title">Carbon Ledger</div>
         <div class="feature-desc">Verifiable CO₂ accounting, personal offset scores & Net-Zero 2050 tracking</div>
-        <div class="feature-stat">""" + str(city_impact["net_zero_2050_progress"]) + """% Net-Zero</div>
+        <div class="feature-stat">""" + str(net_zero_progress) + """% Net-Zero</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -232,9 +237,12 @@ st_data = st_folium(m, width=1200, height=500, returned_objects=[])
 
 st.markdown("### Recent Activity Logs")
 col1, col2, col3 = st.columns(3)
+cctv_live = synthetic_fluctuation(142, 0.03, "home_cctv_live")
+traffic_incidents = synthetic_fluctuation(5, 0.20, "home_traffic_incidents")
+aqi_value = synthetic_fluctuation(45, 0.06, "home_aqi")
 with col1:
-    st.metric(label="Active CCTV Feeds", value="142", delta="12 Online")
+    st.metric(label="Active CCTV Feeds", value=str(cctv_live), delta="12 Online")
 with col2:
-    st.metric(label="Traffic Incidents", value="5", delta="-2 from yesterday", delta_color="inverse")
+    st.metric(label="Traffic Incidents", value=str(max(1, int(traffic_incidents))), delta="-2 from yesterday", delta_color="inverse")
 with col3:
-    st.metric(label="Air Quality Index (AQI)", value="45", delta="Good")
+    st.metric(label="Air Quality Index (AQI)", value=str(max(20, int(aqi_value))), delta="Good")

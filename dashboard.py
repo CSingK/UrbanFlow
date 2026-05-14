@@ -12,12 +12,13 @@ sys.path.insert(0, os.path.dirname(__file__))
 from modules.carbon_ledger import calculate_city_impact
 from modules.bus_intelligence import get_bus_stats
 from modules.parking_engine import get_live_occupancy
-from modules.ui_components import inject_side_nav
+from modules.ui_components import inject_side_nav, inject_global_ui, synthetic_fluctuation
 
 st.set_page_config(page_title="UrbanFlow | Smart City Orchestrator", layout="wide")
 
 # Inject Custom Side Nav
 inject_side_nav()
+inject_global_ui("dashboard")
 
 # ── Custom CSS for the Logo Page ─────────────────────────────────────────────
 st.markdown("""
@@ -85,13 +86,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-with st.sidebar:
-    # Spacer to avoid overlap
-    st.markdown("<div style='margin-top: 100px;'></div>", unsafe_allow_html=True)
-    st.info("Welcome. Navigate through the core mobility modules above.")
-    st.markdown("---")
-    st.sidebar.caption(f"System Time: {datetime.now().strftime('%H:%M:%S')}")
-    st.sidebar.caption("Node: JS-SEZ-JB-01")
+
 
 # ── Main Content ─────────────────────────────────────────────────────────────
 st.markdown("<div class='hero-container'>", unsafe_allow_html=True)
@@ -103,14 +98,17 @@ st.markdown("<div class='sub-title'>Next-generation AI orchestration for the Joh
 city_impact = calculate_city_impact()
 bus_stats = get_bus_stats()
 parking_zones = get_live_occupancy()
-total_avail_lots = sum(z["available"] for z in parking_zones)
+total_avail_lots = synthetic_fluctuation(sum(z["available"] for z in parking_zones), 0.04, "dash_total_lots")
+co2_tonnes = synthetic_fluctuation(city_impact['co2_prevented_today_tonnes'], 0.03, "dash_co2_tonnes")
+active_routes = synthetic_fluctuation(bus_stats['active_routes'], 0.03, "dash_active_routes")
+core_health = synthetic_fluctuation(98.2, 0.01, "dash_core_health")
 
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     st.markdown(f"""
     <div class='stat-card'>
-        <div class='stat-val'>{city_impact['co2_prevented_today_tonnes']} t</div>
+        <div class='stat-val'>{co2_tonnes:.2f} t</div>
         <div class='stat-label'>🌱 CO₂ Prevented Today</div>
     </div>
     """, unsafe_allow_html=True)
@@ -126,7 +124,7 @@ with col2:
 with col3:
     st.markdown(f"""
     <div class='stat-card'>
-        <div class='stat-val'>{bus_stats['active_routes']}</div>
+        <div class='stat-val'>{active_routes}</div>
         <div class='stat-label'>🚌 Active Transit Lines</div>
     </div>
     """, unsafe_allow_html=True)
@@ -134,7 +132,7 @@ with col3:
 with col4:
     st.markdown(f"""
     <div class='stat-card'>
-        <div class='stat-val'>98.2%</div>
+        <div class='stat-val'>{core_health:.1f}%</div>
         <div class='stat-label'>🤖 AI Core Health</div>
     </div>
     """, unsafe_allow_html=True)
