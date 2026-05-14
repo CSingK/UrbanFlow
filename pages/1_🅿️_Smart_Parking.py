@@ -114,6 +114,8 @@ def _load_model_bytes(uploaded_model):
 def _render_model_view(model_bytes: bytes, zone: dict) -> None:
     encoded_model = base64.b64encode(model_bytes).decode("ascii")
     empty_pct = (zone["available"] / zone["total_lots"] * 100) if zone["total_lots"] else 0
+    occupied_count = zone["occupied"]
+    available_count = zone["available"]
     
     components.html(
         f"""
@@ -213,7 +215,7 @@ def _render_model_view(model_bytes: bytes, zone: dict) -> None:
 
             const loader = new GLTFLoader();
             const base64Data = "data:model/gltf-binary;base64,{encoded_model}";
-            const glowingPlanes = [];
+            const glowingBoxes = [];
 
             loader.load(base64Data, (gltf) => {{
                 const model = gltf.scene;
@@ -228,83 +230,92 @@ def _render_model_view(model_bytes: bytes, zone: dict) -> None:
                 camera.position.set(center.x + maxDim * 0.8, center.y + maxDim * 1.0, center.z + maxDim * 1.2);
                 camera.lookAt(center);
                 controls.target.copy(center);
-                
-                // Find ReservedParking nodes
-                const reservedNodes = [];
-                model.traverse((child) => {{
-                    if (child.isMesh && child.name.includes("ReservedParking")) {{
-                        reservedNodes.push(child);
+
+                // ============================================
+                // PARKING LOT CONFIGURATION (ADJUST THESE!)
+                // ============================================
+                const parkingConfig = {{
+                    rows: 2,              // Number of parking rows
+                    cols: 38,             // Number of spots per row
+                    startX: -4.4,         // Left edge X position
+                    startZ: -0.3,         // Front edge Z position  
+                    spacingX: 0.24,        // Width of each spot
+                    spacingZ: 0.9,        // Depth of each spot
+                    groundY: 0.08,        // Height above ground (adjust if floating/buried)
+                    spotWidth: 0.26,       // Visual width of glow box
+                    spotDepth: 0.4        // Visual depth of glow box
+                }};
+
+                const totalSpots = parkingConfig.rows * parkingConfig.cols;  // 2 × 38 = 76
+
+                // 2. Define which indices are occupied (0-indexed)
+                // Top row: indices 0-37 | Bottom row: indices 38-75
+                // 11th spot = index 10 | 14th spot = index 13
+                const occupiedIndices = new Set([10, 13]);
+
+                // 3. Default all spots to 'empty' (green)
+                const spotStatus = Array(totalSpots).fill('empty');
+
+                // 4. Mark specific indices as 'occupied' (red)
+                occupiedIndices.forEach(idx => {{
+                    if (idx < totalSpots) {{
+                        spotStatus[idx] = 'occupied';
                     }}
                 }});
-                
-                // Grid-based slot glow implementation
-                if (reservedNodes.length > 0) {{
-                    const node = reservedNodes[0];
-                    node.geometry.computeBoundingBox();
-                    const bbox = node.geometry.boundingBox;
-                    const min = bbox.min;
-                    const max = bbox.max;
 
-                    // Grid dimensions (customize as needed)
-                    const rows = 2;
-                    const cols = 10;
-                    const slotWidth = (max.x - min.x) / cols;
-                    const slotDepth = (max.z - min.z) / rows;
+                // Create glowing boxes for each parking spot
+                for (let r = 0; r < parkingConfig.rows; r++) {{
+                    for (let c = 0; c < parkingConfig.cols; c++) {{
+                        const idx = r * parkingConfig.cols + c;
+                        const status = spotStatus[idx];
+                        
+                        // Determine color based on status
+                        const color = status === 'empty' ? 0x22C55E : 0xEF4444;
+                        const edgeColor = status === 'empty' ? 0x4ade80 : 0xf87171;
+                        
+                        // Box geometry
+                        const boxGeom = new THREE.BoxGeometry(
+                            parkingConfig.spotWidth, 
+                            0.15, 
+                            parkingConfig.spotDepth
+                        );
 
-                    // Derive per-slot empty status
-                    const totalSlots = rows * cols;
-                    const emptyCount = Math.min({zone["available"]}, totalSlots);
-                    const slotStatus = Array(totalSlots).fill(false);
-                    for (let i = 0; i < emptyCount; i++) {{
-                        slotStatus[i] = true; // true = empty = should glow
-                    }}
+                        // Core glowing mesh
+                        const coreMat = new THREE.MeshBasicMaterial({{
+                            color: color,
+                            transparent: true,
+                            opacity: 0.0,
+                            side: THREE.DoubleSide,
+                            blending: THREE.AdditiveBlending,
+                            depthWrite: false
+                        }});
+                        const glowBox = new THREE.Mesh(boxGeom, coreMat);
 
-                    // Create glowing box for each grid cell
-                    for (let r = 0; r < rows; r++) {{
-                        for (let c = 0; c < cols; c++) {{
-                            const idx = r * cols + c;
-                            const isEmpty = slotStatus[idx];
-                            if (!isEmpty) continue; // Skip occupied slots
+                        // Outline border
+                        const edgesGeom = new THREE.EdgesGeometry(boxGeom);
+                        const lineMat = new THREE.LineBasicMaterial({{
+                            color: edgeColor,
+                            linewidth: 3,
+                            transparent: true,
+                            opacity: 0.0,
+                            blending: THREE.AdditiveBlending,
+                            depthWrite: false
+                        }});
+                        const border = new THREE.LineSegments(edgesGeom, lineMat);
+                        glowBox.add(border);
 
-                            // Box geometry (slightly smaller than cell for margin)
-                            const boxGeom = new THREE.BoxGeometry(slotWidth * 0.95, 0.12, slotDepth * 0.95);
+                        // Position in world space
+                        const x = parkingConfig.startX + c * parkingConfig.spacingX;
+                        const z = parkingConfig.startZ + r * parkingConfig.spacingZ;
+                        glowBox.position.set(x, parkingConfig.groundY, z);
 
-                            // Core glowing mesh
-                            const coreMat = new THREE.MeshBasicMaterial({{
-                                color: 0x22C55E,
-                                transparent: true,
-                                opacity: 0.0,
-                                side: THREE.DoubleSide,
-                                blending: THREE.AdditiveBlending,
-                                depthWrite: false
-                            }});
-                            const glowBox = new THREE.Mesh(boxGeom, coreMat);
-
-                            // Outline border
-                            const edgesGeom = new THREE.EdgesGeometry(boxGeom);
-                            const lineMat = new THREE.LineBasicMaterial({{
-                                color: 0x4ade80,
-                                linewidth: 4,
-                                transparent: true,
-                                opacity: 0.0,
-                                blending: THREE.AdditiveBlending,
-                                depthWrite: false
-                            }});
-                            const border = new THREE.LineSegments(edgesGeom, lineMat);
-                            glowBox.add(border);
-
-                            // Position in world space
-                            const x = min.x + (c + 0.5) * slotWidth;
-                            const z = min.z + (r + 0.5) * slotDepth;
-                            glowBox.position.set(x, 0.05, z);
-
-                            scene.add(glowBox);
-                            glowingPlanes.push({{ 
-                                core: glowBox, 
-                                border: border, 
-                                offset: Math.random() * Math.PI * 2 
-                            }});
-                        }}
+                        scene.add(glowBox);
+                        glowingBoxes.push({{ 
+                            core: glowBox, 
+                            border: border, 
+                            offset: Math.random() * Math.PI * 2,
+                            status: status
+                        }});
                     }}
                 }}
 
@@ -315,10 +326,14 @@ def _render_model_view(model_bytes: bytes, zone: dict) -> None:
                     controls.update();
                     
                     time += 0.04;
-                    glowingPlanes.forEach(p => {{
+                    glowingBoxes.forEach(p => {{
                         const pulse = (Math.sin(time + p.offset) + 1) / 2;
-                        p.core.material.opacity = 0.2 + (pulse * 0.4);
-                        p.border.material.opacity = 0.4 + (pulse * 0.6);
+                        // Different opacity for empty vs occupied
+                        const baseOpacity = p.status === 'empty' ? 0.3 : 0.4;
+                        const pulseRange = p.status === 'empty' ? 0.3 : 0.4;
+                        
+                        p.core.material.opacity = baseOpacity + (pulse * pulseRange);
+                        p.border.material.opacity = 0.5 + (pulse * 0.5);
                     }});
                     
                     renderer.render(scene, camera);
@@ -583,6 +598,13 @@ if view_mode == "🚗 Commuter":
         st.session_state["selected_parking_zone"] = nearest_zone["id"]
 
     selected_zone = next((z for z in zones if z["id"] == st.session_state["selected_parking_zone"]), zones[0])
+
+    # Override with actual 3D model data
+    selected_zone["total_lots"] = 76
+    selected_zone["occupied"] = 2
+    selected_zone["available"] = 74
+    selected_zone["occupancy_pct"] = round(2 / 76 * 100, 1)
+    selected_zone["status"] = "AVAILABLE" if selected_zone["available"] > 10 else "LOW"
 
     st.markdown("---")
     detail_col, model_col = st.columns([0.95, 1.4], gap="large")

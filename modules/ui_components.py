@@ -18,6 +18,7 @@ def get_logo_base64():
 def inject_side_nav():
     """Render a lightweight, stable sidebar navigation for UrbanFlow."""
     
+    # Ensure default mode exists
     if "global_view_mode" not in st.session_state:
         st.session_state.global_view_mode = "Commuter"
 

@@ -63,26 +63,52 @@ def get_live_occupancy() -> List[Dict[str, Any]]:
     """Simulate live occupancy from LoRaWAN sensors for each parking zone."""
     random.seed(datetime.datetime.now().minute)  # changes every minute
     zones = []
+    
     for z in PARKING_ZONES:
+        # 🎯 SPECIAL CASE: Medini Green Hub (matches 3D model)
+        if z["name"] == "Medini Green Hub":
+            # Hardcoded to match 3D visualization: 2 rows × 38 cols = 76 spots
+            # Occupied: indices 10 and 13 (11th and 14th spots in top row)
+            occupied = 2
+            available = 74
+            total_lots = 76
+            occupancy_pct = round(occupied / total_lots * 100, 1)  # 2.6%
+            status = "AVAILABLE"  # Since available > 20
+            
         # CIQ/RTS zones are almost always full, Green Hubs have more space
-        if z["type"] in ("CIQ Zone", "RTS Terminal"):
+        elif z["type"] in ("CIQ Zone", "RTS Terminal"):
             occupancy_pct = random.uniform(0.85, 0.98)
+            occupied = int(z["total_lots"] * occupancy_pct)
+            available = z["total_lots"] - occupied
+            total_lots = z["total_lots"]
+            
         elif z["type"] == "Premium":
             occupancy_pct = random.uniform(0.60, 0.90)
-        else:  # Green Hub
+            occupied = int(z["total_lots"] * occupancy_pct)
+            available = z["total_lots"] - occupied
+            total_lots = z["total_lots"]
+            
+        else:  # Other Green Hubs
             occupancy_pct = random.uniform(0.20, 0.55)
+            occupied = int(z["total_lots"] * occupancy_pct)
+            available = z["total_lots"] - occupied
+            total_lots = z["total_lots"]
 
-        occupied = int(z["total_lots"] * occupancy_pct)
-        available = z["total_lots"] - occupied
         zones.append({
             **z,
+            "total_lots": total_lots,  # Override for Medini
             "occupied": occupied,
             "available": available,
-            "occupancy_pct": round(occupancy_pct * 100, 1),
-            "status": "FULL" if available <= 5 else ("LOW" if available <= 20 else "AVAILABLE"),
+            "occupancy_pct": occupancy_pct if "occupancy_pct" in locals() else round(occupied / total_lots * 100, 1),
+            "status": status if "status" in locals() else ("FULL" if available <= 5 else ("LOW" if available <= 20 else "AVAILABLE")),
             "sensor_type": "LoRaWAN" if z["type"] == "Green Hub" else "CCTV",
             "last_updated": datetime.datetime.now().strftime("%H:%M:%S"),
         })
+        
+        # Clean up local vars for next iteration
+        if "status" in locals(): del status
+        if "occupancy_pct" in locals() and z["name"] != "Medini Green Hub": del occupancy_pct
+        
     return zones
 
 
