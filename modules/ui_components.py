@@ -192,10 +192,10 @@ def inject_side_nav(page_id: str = "urbanflow"):
         )
 
 
-        st.page_link("pages/1_🅿️_Smart_Parking.py", label="Smart Parking")
-        st.page_link("pages/2_🚌_Bus_Intelligence.py", label="Bus Intelligence")
-        st.page_link("pages/3_🚗_Carpool_Agent.py", label="Carpool Agent")
-        st.page_link("pages/4_🌿_Carbon_Ledger.py", label="Carbon Ledger")
+        st.page_link("pages/1_Smart_Parking.py", label="Smart Parking")
+        st.page_link("pages/2_Bus_Intelligence.py", label="Bus Intelligence")
+        st.page_link("pages/3_Carpool_Agent.py", label="Carpool Agent")
+        st.page_link("pages/4_Carbon_Ledger.py", label="Carbon Ledger")
 
         st.markdown("<div style='margin-top: 3rem;'></div>", unsafe_allow_html=True)
         
