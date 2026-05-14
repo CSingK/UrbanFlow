@@ -2,6 +2,7 @@ import datetime
 import random
 import re
 import os
+import base64
 
 import streamlit as st
 import streamlit.components.v1 as components
@@ -9,13 +10,13 @@ import streamlit.components.v1 as components
 
 def get_logo_base64():
     try:
-        logo_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "logo_b64_new.txt")
-        with open(logo_path, "r") as f:
-            return f.read().strip()
+        logo_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "logo-removebg.png")
+        with open(logo_path, "rb") as f:
+            return base64.b64encode(f.read()).decode("utf-8")
     except Exception:
         return ""
 
-def inject_side_nav():
+def inject_side_nav(page_id: str = "urbanflow"):
     """Render a lightweight, stable sidebar navigation for UrbanFlow."""
     
     # Ensure default mode exists
@@ -34,7 +35,8 @@ def inject_side_nav():
         radio_color = "#ef4444"
 
     logo_b64 = get_logo_base64()
-    logo_html = f'<img src="data:image/jpeg;base64,{logo_b64}" style="width: 100%; border-radius: 12px; margin-bottom: 0.5rem;" />' if logo_b64 else '<div class="uf-sidebar-title">UrbanFlow Control</div>'
+    logo_html = f'<a href="/" target="_self"><img src="data:image/png;base64,{logo_b64}" style="width: 100%; border-radius: 12px; margin-bottom: 0.5rem; transition: transform 0.3s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.3);" onmouseover="this.style.transform=\\\'scale(1.03)\\\'; this.style.boxShadow=\\\'0 8px 25px rgba(56, 189, 248, 0.4)\\\'" onmouseout="this.style.transform=\\\'scale(1)\\\'; this.style.boxShadow=\\\'0 4px 15px rgba(0,0,0,0.3)\\\'" /></a>' if logo_b64 else '<a href="/" target="_self" style="text-decoration: none;"><div class="uf-sidebar-title" style="transition: color 0.3s ease;" onmouseover="this.style.color=\\\'#38bdf8\\\'" onmouseout="this.style.color=\\\'\\\'">UrbanFlow Control</div></a>'
+
 
     st.markdown(
         f"""
@@ -77,33 +79,55 @@ def inject_side_nav():
             margin: 0;
         }}
 
-        [data-testid="stSidebar"] .stPageLink > a {{
+        [data-testid="stSidebar"] [data-testid="stPageLink"] a {{
             border-radius: 12px;
-            padding: 0.5rem 0.8rem;
-            transition: all 0.25s ease;
+            padding: 0.6rem 0.9rem;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
             border: 1px solid rgba(255, 255, 255, 0.05);
             background: rgba(255, 255, 255, 0.02);
             margin-bottom: 0.3rem;
-            color: #e8f7ff !important;
+            color: #9cc2d0 !important;
             font-weight: 600;
             display: flex;
             align-items: center;
             gap: 0.8rem;
+            position: relative;
+            overflow: hidden;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.8rem;
         }}
 
-        [data-testid="stSidebar"] .stPageLink > a:hover {{
-            background: linear-gradient(90deg, rgba(41, 211, 178, 0.15), rgba(41, 211, 178, 0.02));
-            border-color: rgba(41, 211, 178, 0.4);
-            transform: translateX(4px);
-            box-shadow: -4px 0 0 rgba(41, 211, 178, 0.8);
+        [data-testid="stSidebar"] [data-testid="stPageLink"] a::before {{
+            content: '';
+            position: absolute;
+            top: 0; left: -100%; width: 50%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.2), transparent);
+            transform: skewX(-20deg);
+            transition: all 0.5s ease;
+        }}
+
+        [data-testid="stSidebar"] [data-testid="stPageLink"] a:hover::before {{
+            left: 120%;
+        }}
+
+        [data-testid="stSidebar"] [data-testid="stPageLink"] a:hover {{
+            background: linear-gradient(90deg, rgba(56, 189, 248, 0.15), rgba(15, 23, 42, 0.4));
+            border-color: rgba(56, 189, 248, 0.6);
+            transform: translateX(8px);
+            box-shadow: -4px 0 15px rgba(56, 189, 248, 0.4), inset 2px 0 10px rgba(56, 189, 248, 0.1);
             text-decoration: none;
+            color: #e8f7ff !important;
+            text-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
         }}
         
-        [data-testid="stSidebar"] .stPageLink > a[data-active="true"],
-        [data-testid="stSidebar"] .stPageLink > a[aria-current="page"] {{
-            background: linear-gradient(90deg, rgba(41, 211, 178, 0.25), rgba(41, 211, 178, 0.05));
-            border-color: rgba(41, 211, 178, 0.6);
-            box-shadow: -4px 0 0 rgba(41, 211, 178, 1);
+        [data-testid="stSidebar"] [data-testid="stPageLink"] a[data-active="true"],
+        [data-testid="stSidebar"] [data-testid="stPageLink"] a[aria-current="page"] {{
+            background: linear-gradient(90deg, rgba(56, 189, 248, 0.25), rgba(15, 23, 42, 0.6));
+            border-color: rgba(56, 189, 248, 0.8);
+            box-shadow: -4px 0 20px rgba(56, 189, 248, 0.5);
+            color: #ffffff !important;
+            text-shadow: 0 0 10px rgba(56, 189, 248, 0.8);
         }}
 
         [data-testid="stSidebar"] [data-testid="stExpander"] {{
@@ -168,15 +192,10 @@ def inject_side_nav():
         )
 
 
-        st.page_link("dashboard.py", label="Home Overview", icon="🏙️")
-
-        with st.expander("🛠️ Orchestration", expanded=True):
-            st.page_link("pages/1_🅿️_Smart_Parking.py", label="Smart Parking", icon="🅿️")
-            st.page_link("pages/2_🚗_Carpool_Agent.py", label="Carpool Agent", icon="🚗")
-            st.page_link("pages/3_🚌_Bus_Intelligence.py", label="Bus Intelligence", icon="🚌")
-
-        with st.expander("⚖️ Accountability", expanded=True):
-            st.page_link("pages/4_🌿_Carbon_Ledger.py", label="Carbon Ledger", icon="🌿")
+        st.page_link("pages/1_🅿️_Smart_Parking.py", label="Smart Parking")
+        st.page_link("pages/2_🚌_Bus_Intelligence.py", label="Bus Intelligence")
+        st.page_link("pages/3_🚗_Carpool_Agent.py", label="Carpool Agent")
+        st.page_link("pages/4_🌿_Carbon_Ledger.py", label="Carbon Ledger")
 
         st.markdown("<div style='margin-top: 3rem;'></div>", unsafe_allow_html=True)
         
@@ -196,11 +215,11 @@ def inject_side_nav():
             """, unsafe_allow_html=True
         )
 
-    # Render mode selector at the top right of the main page
-    mode_col1, mode_col2 = st.columns([0.65, 0.35])
-    with mode_col2:
-        st.markdown("<div style='font-size: 0.75rem; color: #9cc2d0; font-weight: 800; margin-bottom: 0.2rem; text-transform: uppercase;'>System Mode</div>", unsafe_allow_html=True)
-        st.radio("Mode", ["Commuter", "Authority"], key="global_view_mode", horizontal=True, label_visibility="collapsed")
+        if page_id != "dashboard":
+            st.markdown("<div style='margin-top: 2rem; border-top: 1px solid rgba(133, 224, 255, 0.1); padding-top: 1rem;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='font-size: 0.75rem; color: #9cc2d0; font-weight: 800; margin-bottom: 0.2rem; text-transform: uppercase;'>System Mode</div>", unsafe_allow_html=True)
+            st.radio("Mode", ["Commuter", "Authority"], key="global_view_mode", horizontal=True, label_visibility="collapsed")
+
 
 
 
@@ -341,7 +360,9 @@ def inject_gsap_animations(page_id: str = "urbanflow"):
               const headings = parentDoc.querySelectorAll('h1, h2');
               const blocks = parentDoc.querySelectorAll('[data-testid="stHorizontalBlock"] > div');
               const charts = parentDoc.querySelectorAll('.js-plotly-plot, iframe[title*="streamlit_folium"]');
+              const sideLinks = parentDoc.querySelectorAll('[data-testid="stSidebar"] [data-testid="stPageLink"] a');
 
+              gsapRef.fromTo(sideLinks, { x: -20, opacity: 0 }, { x: 0, opacity: 1, duration: 0.6, stagger: 0.08, ease: 'back.out(1.2)' });
               gsapRef.fromTo(headings, { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, stagger: 0.05, ease: 'power2.out' });
               gsapRef.fromTo(metrics, { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.55, stagger: 0.04, ease: 'power2.out', delay: 0.08 });
               gsapRef.fromTo(blocks, { y: 18, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, stagger: 0.03, ease: 'power2.out', delay: 0.12 });

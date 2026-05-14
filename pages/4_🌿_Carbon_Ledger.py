@@ -18,15 +18,41 @@ inject_global_ui("carbon")
 
 st.markdown("""
 <style>
-    .stApp { background: linear-gradient(135deg, #0f172a, #1e293b); }
-    [data-testid="stSidebar"] { background: rgba(15,23,42,0.4); backdrop-filter: blur(10px);
-        border-right: 1px solid rgba(255,255,255,0.1); }
-    div[data-testid="metric-container"] { background: rgba(30,41,59,0.5) !important;
-        backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 12px; padding: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-    div[data-testid="metric-container"]:hover { box-shadow: 0 0 15px rgba(56,189,248,0.3);
-        transition: all 0.3s ease; }
-    h1,h2,h3,h4,h5,h6 { color: #f8fafc !important; font-family: 'Inter', sans-serif; }
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;800&family=JetBrains+Mono:wght@700&display=swap');
+    
+    .stApp {
+        background-color: #050b14;
+        background-image: 
+            linear-gradient(rgba(56, 189, 248, 0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(56, 189, 248, 0.05) 1px, transparent 1px);
+        background-size: 50px 50px;
+        background-position: center;
+        animation: pan 60s linear infinite;
+    }
+    @keyframes pan {
+        from { background-position: 0 0; }
+        to { background-position: 500px 500px; }
+    }
+
+    .main-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 6.5rem;
+        font-weight: 800;
+        letter-spacing: -3px;
+        background: linear-gradient(to right, #38bdf8, #818cf8, #34d399);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0.5rem;
+        text-shadow: 0 0 40px rgba(56, 189, 248, 0.3);
+        line-height: 1.1;
+    }
+
+    [data-testid="stMetric"] {
+        background: rgba(30, 41, 59, 0.5) !important;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(56, 189, 248, 0.2) !important;
+        border-radius: 16px !important;
+    }
 
     .reward-tier-card {
         border-radius: 10px;
@@ -53,8 +79,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🌿 National Carbon Ledger")
-st.markdown("Real-time verifiable CO₂ accounting — personal offset scores and city-wide impact tracking for Net-Zero 2050.")
+st.markdown("<div class='main-title'>Carbon Ledger</div>", unsafe_allow_html=True)
+st.markdown("<p style='color:#94a3b8; font-size:1.1rem; margin-top:-0.5rem; margin-bottom:2rem;'>Real-time verifiable CO₂ accounting — personal offset scores and city-wide impact tracking for Net-Zero 2050.</p>", unsafe_allow_html=True)
 
 view_mode = "🧑 Commuter" if st.session_state.get("global_view_mode", "Commuter") == "Commuter" else "🏛️ Authority"
 

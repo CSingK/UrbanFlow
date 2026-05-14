@@ -34,11 +34,11 @@ def _zone_status_color(status: str) -> str:
 
 
 def _sensor_status_color(utilization: float) -> str:
-    if utilization >= 0.85:
-        return "#ef4444"
-    if utilization >= 0.65:
-        return "#f97316"
-    return "#22c55e"
+    """Returns a simplified 4-state color spectrum for IoT sensors."""
+    if utilization >= 0.95: return "#ef4444" # Critical Red
+    if utilization >= 0.80: return "#f97316" # Busy Orange
+    if utilization >= 0.65: return "#facc15" # High Yellow
+    return "#34d399" # Emerald Green (Moderate/Available)
 
 
 def _render_zone_sensor_cloud(m: folium.Map, zones: list[dict]) -> None:
@@ -63,17 +63,50 @@ def _render_zone_sensor_cloud(m: folium.Map, zones: list[dict]) -> None:
             local_util = max(0.08, min(0.99, base_util + rng.uniform(-0.22, 0.22)))
             color = _sensor_status_color(local_util)
 
+            # Glow effect (larger, fainter circle)
             folium.CircleMarker(
                 location=[lat + d_lat, lng + d_lng],
-                radius=3,
+                radius=6,
                 color=color,
                 fill=True,
                 fill_color=color,
-                fill_opacity=0.88,
-                opacity=0.9,
-                weight=1,
-                tooltip=f"{z['name']} sensor · {int(local_util * 100)}% occupied",
+                fill_opacity=0.15,
+                weight=0,
             ).add_to(m)
+
+            # Core point
+            folium.CircleMarker(
+                location=[lat + d_lat, lng + d_lng],
+                radius=2.5,
+                color="#ffffff" if local_util < 0.1 else color,
+                fill=True,
+                fill_color=color,
+                fill_opacity=1.0,
+                weight=1.5,
+                opacity=1.0,
+                tooltip=f"Sensor ID: {rng.randint(1000, 9999)} · {int(local_util * 100)}% Load",
+            ).add_to(m)
+
+    # Inject real-time fluctuation script into the map's own DOM
+    m.get_root().html.add_child(folium.Element("""
+    <script>
+    setTimeout(function() {
+        setInterval(function(){
+            var circles = document.querySelectorAll('path.leaflet-interactive');
+            circles.forEach(function(c){
+                if(Math.random() > 0.9) {
+                    var op = 0.4 + Math.random() * 0.6;
+                    c.setAttribute('fill-opacity', op);
+                    c.style.transition = 'all 0.5s ease';
+                    if(Math.random() > 0.5) {
+                        c.setAttribute('stroke-width', 1 + Math.random() * 3);
+                    }
+                }
+            });
+        }, 1500);
+    }, 2000);
+    </script>
+    """))
 
 
 def _extract_click_coords(map_state: dict) -> tuple[float | None, float | None]:
@@ -500,35 +533,102 @@ def _safe_st_folium(
         wrap_longitude=wrap_longitude,
     )
 
-# ── Shared CSS ────────────────────────────────────────────────────────────────
+# ── Advanced Styling ────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-    .stApp { background: linear-gradient(135deg, #0f172a, #1e293b); }
-    [data-testid="stSidebar"] { background: rgba(15,23,42,0.4); backdrop-filter: blur(10px);
-        border-right: 1px solid rgba(255,255,255,0.1); }
-    div[data-testid="metric-container"] { background: rgba(30,41,59,0.5) !important;
-        backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 12px; padding: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-    div[data-testid="metric-container"]:hover { box-shadow: 0 0 15px rgba(56,189,248,0.3);
-        transition: all 0.3s ease; }
-    h1,h2,h3,h4,h5,h6 { color: #f8fafc !important; font-family: 'Inter', sans-serif; }
-    .glass-card { background: rgba(30,41,59,0.5); backdrop-filter: blur(10px);
-        border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 1.5rem;
-        margin-bottom: 1rem; }
-    .glass-card:hover { box-shadow: 0 0 20px rgba(56,189,248,0.2); transition: all 0.3s ease; }
+    /* Panning Grid Background */
+    .stApp {
+        background-color: #050b14;
+        background-image: 
+            linear-gradient(rgba(56, 189, 248, 0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(56, 189, 248, 0.05) 1px, transparent 1px);
+        background-size: 50px 50px;
+        background-position: center;
+        animation: pan 60s linear infinite;
+    }
+
+    @keyframes pan {
+        from { background-position: 0 0; }
+        to { background-position: 500px 500px; }
+    }
+
+    /* Animated Neon Blobs */
+    .stApp::before {
+        content: '';
+        position: fixed;
+        top: -10%; left: -10%; width: 40%; height: 40%;
+        background: radial-gradient(circle, rgba(56, 189, 248, 0.08) 0%, transparent 70%);
+        filter: blur(80px);
+        animation: floatBlob 20s ease-in-out infinite alternate;
+        z-index: -1;
+    }
+    @keyframes floatBlob {
+        0% { transform: translate(0, 0) scale(1); }
+        100% { transform: translate(20%, 30%) scale(1.2); }
+    }
+
+    /* Glassmorphism Cards with Scanline Texture */
+    .glass-card {
+        background: rgba(15, 23, 42, 0.75) !important;
+        backdrop-filter: blur(20px) !important;
+        -webkit-backdrop-filter: blur(20px) !important;
+        border: 1px solid rgba(133, 224, 255, 0.2) !important;
+        border-radius: 24px !important;
+        padding: 1.8rem !important;
+        box-shadow: 0 15px 45px rgba(0, 0, 0, 0.5) !important;
+        position: relative;
+        overflow: hidden;
+    }
+    .glass-card::after {
+        content: "";
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: repeating-linear-gradient(0deg, rgba(0,0,0,0.03) 0px, rgba(0,0,0,0.03) 1px, transparent 1px, transparent 2px);
+        pointer-events: none;
+    }
+
+    /* Metric Styling */
+    [data-testid="stMetric"] {
+        background: rgba(30, 41, 59, 0.5) !important;
+        border: 1px solid rgba(56, 189, 248, 0.2) !important;
+        border-radius: 16px !important;
+        box-shadow: 0 0 15px rgba(56, 189, 248, 0.1);
+    }
+
+    /* Titles */
+    .main-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 6.5rem;
+        font-weight: 800;
+        letter-spacing: -3px;
+        background: linear-gradient(to right, #38bdf8, #818cf8, #34d399);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0.5rem;
+        text-shadow: 0 0 40px rgba(56, 189, 248, 0.3);
+        line-height: 1.1;
+    }
+
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🅿️ Urban Enforcement & Smart Parking")
-st.markdown("Green Zone navigation, real-time occupancy monitoring, and autonomous enforcement.")
 
-view_mode = "🚗 Commuter" if st.session_state.get("global_view_mode", "Commuter") == "Commuter" else "🛡️ Authority"
+
+
+
+
+st.markdown("<div class='main-title'>Smart Parking</div>", unsafe_allow_html=True)
+st.markdown("<p style='color:#94a3b8; font-size:1.1rem; margin-top:-0.5rem; margin-bottom:2rem;'>IoT-integrated Green Zone navigation & autonomous enforcement logic.</p>", unsafe_allow_html=True)
+
+
+view_mode = "Commuter" if st.session_state.get("global_view_mode", "Commuter") == "Commuter" else "Authority"
 
 # ══════════════════════════════════════════════════════════════════════════════
 # COMMUTER VIEW
 # ══════════════════════════════════════════════════════════════════════════════
-if view_mode == "🚗 Commuter":
-    st.subheader("📍 Your Location")
+if view_mode == "Commuter":
+    st.subheader("Your Location")
+
     user_loc = st.selectbox(
         "Starting Point",
         [
@@ -556,7 +656,8 @@ if view_mode == "🚗 Commuter":
     st.session_state.setdefault("selected_parking_zone", zones[0]["id"])
 
     # ── Live Parking Map ──────────────────────────────────────────────────────
-    st.subheader("🗺️ Live Parking Zone Map")
+    st.subheader("Live Parking Zone Map")
+
     st.caption("Dense IoT sensor cloud: green=available, orange=busy, red=near full. Click a zone circle to inspect and load the 3D preview.")
     m = folium.Map(location=[1.4800, 103.7200], zoom_start=12, tiles="cartodbdark_matter")
 
@@ -600,43 +701,63 @@ if view_mode == "🚗 Commuter":
     selected_zone = next((z for z in zones if z["id"] == st.session_state["selected_parking_zone"]), zones[0])
 
     # Override with actual 3D model data
+    selected_zone["name"] = user_loc
     selected_zone["total_lots"] = 76
     selected_zone["occupied"] = 2
     selected_zone["available"] = 74
     selected_zone["occupancy_pct"] = round(2 / 76 * 100, 1)
     selected_zone["status"] = "AVAILABLE" if selected_zone["available"] > 10 else "LOW"
 
+
     st.markdown("---")
     detail_col, model_col = st.columns([0.95, 1.4], gap="large")
 
     with detail_col:
-        st.subheader("🧭 Selected Parking Zone")
+        st.subheader("Terminal Dashboard")
+        status_class = "status-available" if selected_zone["available"] > 10 else "status-low"
+        
         st.markdown(
             f"""
-            <div class="glass-card">
-                <h4 style="margin-bottom:0.4rem;">{selected_zone['name']}</h4>
-                <div style="color:#cbd5e1; margin-bottom:0.75rem;">{selected_zone['type']} · {selected_zone['sensor_type']}</div>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
-                    <div>
-                        <div style="color:#94a3b8; font-size:0.8rem;">EMPTY</div>
-                        <div style="font-size:1.7rem; font-weight:800; color:#22c55e;">{selected_zone['available']}</div>
-                    </div>
-                    <div>
-                        <div style="color:#94a3b8; font-size:0.8rem;">OCCUPIED</div>
-                        <div style="font-size:1.7rem; font-weight:800; color:#ef4444;">{selected_zone['occupied']}</div>
-                    </div>
-                </div>
-                <div style="margin-top:1rem; color:#e2e8f0; font-weight:700;">Occupancy: {selected_zone['occupancy_pct']}%</div>
-                <div style="margin-top:0.5rem; color:#94a3b8;">Status: {selected_zone['status']}</div>
-            </div>
-            """,
+<div class="glass-card">
+<div class="status-badge {status_class}">{selected_zone['status']}</div>
+<h3 style="margin: 0 0 0.2rem 0; font-family: 'Sora', sans-serif;">{selected_zone['name']}</h3>
+<div style="color:#64748b; font-size:0.85rem; margin-bottom:1.5rem; font-family:'JetBrains Mono';">ZONE_ID: {selected_zone['id'].upper()} // {selected_zone['sensor_type']}</div>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; background:rgba(255,255,255,0.03); padding:1rem; border-radius:12px;">
+<div>
+<div style="color:#94a3b8; font-size:0.7rem; text-transform:uppercase; letter-spacing:1px;">Available</div>
+<div id="lots-avail" class="cockpit-metric" style="font-size:2.2rem; color:#22c55e;">{selected_zone['available']}</div>
+</div>
+<div style="text-align:right;">
+<div style="color:#94a3b8; font-size:0.7rem; text-transform:uppercase; letter-spacing:1px;">Occupied</div>
+<div id="lots-occ" class="cockpit-metric" style="font-size:2.2rem; color:#ef4444;">{selected_zone['occupied']}</div>
+</div>
+</div>
+
+<div style="margin-top:1.5rem;">
+<div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+<span style="color:#e2e8f0; font-weight:700; font-size:0.9rem;">Occupancy Density</span>
+<span id="lots-pct" style="color:#38bdf8; font-family:'JetBrains Mono';">{selected_zone['occupancy_pct']}%</span>
+</div>
+</div>
+</div>
+""",
             unsafe_allow_html=True,
         )
         st.progress(selected_zone["occupied"] / selected_zone["total_lots"] if selected_zone["total_lots"] else 0)
-        st.metric("Rate", f"RM {selected_zone['hourly_rate']:.2f}/hr")
-        if selected_zone["has_shuttle"]:
-            st.info(f"🚐 Shuttle: Every {selected_zone['shuttle_freq_min']} min")
-        st.caption("Tip: click another circle on the map to switch the preview.")
+
+        
+        m_col1, m_col2 = st.columns(2)
+        with m_col1:
+            st.metric("Hourly Rate", f"RM {selected_zone['hourly_rate']:.2f}/hr")
+        with m_col2:
+            if selected_zone["has_shuttle"]:
+                st.metric("Shuttle Freq.", f"{selected_zone['shuttle_freq_min']} min")
+            else:
+                st.metric("Walkability", "High")
+        
+        st.caption("✨ Data updates automatically via IoT feed. Tap a map circle to switch zones.")
+
 
     with model_col:
         st.subheader("🧊 3D Parking Lot Preview")
@@ -645,7 +766,8 @@ if view_mode == "🚗 Commuter":
 
     # ── Smart Reroute ─────────────────────────────────────────────────────────
     st.markdown("---")
-    st.subheader("🔄 Smart Green Hub Reroute")
+    st.subheader("Smart Green Hub Reroute")
+
     if st.button("🔍 Find Best Parking Option", use_container_width=True):
         reroute = get_nearest_green_hub(user_coords[0], user_coords[1])
         if "error" in reroute:
@@ -662,9 +784,9 @@ if view_mode == "🚗 Commuter":
                 st.info(f"🚐 **Shuttle to RTS**: {reroute['shuttle_frequency']} | "
                         f"Distance to terminal: {reroute['rts_connection']}")
 
-    # ── Occupancy Chart ───────────────────────────────────────────────────────
     st.markdown("---")
-    st.subheader("📊 Zone Occupancy Overview")
+    st.subheader("Zone Occupancy Overview")
+
     fig = go.Figure()
     zone_names = [z["name"] for z in zones]
     fig.add_trace(go.Bar(name="Occupied", x=zone_names, y=[z["occupied"] for z in zones],
@@ -678,14 +800,21 @@ if view_mode == "🚗 Commuter":
                       legend=dict(orientation="h", y=1.1))
     st.plotly_chart(fig, use_container_width=True)
 
+
+
+
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # AUTHORITY VIEW
 # ══════════════════════════════════════════════════════════════════════════════
 else:
-    st.subheader("🛡️ Autonomous Enforcement Dashboard")
+    st.subheader("Autonomous Enforcement Dashboard")
+
     
     st.markdown("---")
-    st.subheader("🔧 Enforcement Filters")
+    st.subheader("Enforcement Filters")
+
     severity_filter = st.multiselect(
         "Severity",
         ["Low", "Medium", "High", "Critical"],
@@ -700,15 +829,42 @@ else:
     critical_incidents = synthetic_fluctuation(sum(1 for i in incidents if i["severity"] == "Critical"), 0.10, "parking_critical_incidents")
     sent_to_pdrm = synthetic_fluctuation(sum(1 for i in incidents if i["status"] == "Sent to PDRM"), 0.10, "parking_sent_pdrm")
     fines_issued = synthetic_fluctuation(sum(1 for i in incidents if i["status"] == "Fine Issued"), 0.10, "parking_fines_issued")
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Total Incidents", max(1, int(total_incidents)))
-    c2.metric("Critical", max(0, int(critical_incidents)))
-    c3.metric("Sent to PDRM", max(0, int(sent_to_pdrm)))
-    c4.metric("Fines Issued", max(0, int(fines_issued)))
+    mc1, mc2, mc3, mc4 = st.columns(4)
+    
+    with mc1:
+        st.markdown(f"""
+            <div class="glass-card" style="padding:1rem !important; text-align:center;">
+                <div style="color:#94a3b8; font-size:0.65rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:0.5rem;">Total Incidents</div>
+                <div id="auth-total" class="cockpit-metric" style="font-size:1.8rem; color:#f8fafc;">{int(total_incidents)}</div>
+            </div>
+        """, unsafe_allow_html=True)
+    with mc2:
+        st.markdown(f"""
+            <div class="glass-card" style="padding:1rem !important; text-align:center; border-color:rgba(239, 68, 68, 0.3) !important;">
+                <div style="color:#f87171; font-size:0.65rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:0.5rem;">Critical</div>
+                <div id="auth-critical" class="cockpit-metric" style="font-size:1.8rem; color:#ef4444;">{int(critical_incidents)}</div>
+            </div>
+        """, unsafe_allow_html=True)
+    with mc3:
+        st.markdown(f"""
+            <div class="glass-card" style="padding:1rem !important; text-align:center;">
+                <div style="color:#94a3b8; font-size:0.65rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:0.5rem;">Sent to PDRM</div>
+                <div id="auth-pdrm" class="cockpit-metric" style="font-size:1.8rem; color:#38bdf8;">{int(sent_to_pdrm)}</div>
+            </div>
+        """, unsafe_allow_html=True)
+    with mc4:
+        st.markdown(f"""
+            <div class="glass-card" style="padding:1rem !important; text-align:center;">
+                <div style="color:#94a3b8; font-size:0.65rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:0.5rem;">Fines Issued</div>
+                <div id="auth-fines" class="cockpit-metric" style="font-size:1.8rem; color:#facc15;">{int(fines_issued)}</div>
+            </div>
+        """, unsafe_allow_html=True)
+
 
     # ── Incident Table ────────────────────────────────────────────────────────
     st.markdown("---")
-    st.subheader("📋 Violation Log")
+    st.subheader("Violation Log")
+
     if filtered:
         df = pd.DataFrame(filtered)
         df_display = df[["incident_id", "timestamp", "license_plate", "violation",
@@ -724,7 +880,8 @@ else:
 
     # ── Enforcement Map ───────────────────────────────────────────────────────
     st.markdown("---")
-    st.subheader("🗺️ Violation Locations")
+    st.subheader("Violation Locations")
+
     em = folium.Map(location=[1.4800, 103.7300], zoom_start=12, tiles="cartodbdark_matter")
     sev_colors = {"Low": "green", "Medium": "orange", "High": "red", "Critical": "darkred"}
     for inc in filtered:
@@ -735,3 +892,45 @@ else:
         ).add_to(em)
     
     _safe_st_folium(em, width=1100, height=400, key="enforcement_map")
+
+# ── Real-Time Fluctuation Script ──────────────────────────────────────────
+components.html(
+    """
+    <script>
+    (function() {
+        const parentDoc = window.parent.document;
+        const updateMetrics = () => {
+            const availEl = parentDoc.getElementById('lots-avail');
+            const occEl = parentDoc.getElementById('lots-occ');
+            const pctEl = parentDoc.getElementById('lots-pct');
+            if (availEl && occEl) {
+                let avail = parseInt(availEl.innerText);
+                let occ = parseInt(occEl.innerText);
+                if (Math.random() > 0.6) {
+                    const shift = Math.random() > 0.5 ? 1 : -1;
+                    if (avail - shift >= 0 && occ + shift >= 0) {
+                        avail -= shift; occ += shift;
+                        availEl.innerText = avail; occEl.innerText = occ;
+                        if (pctEl) {
+                            const total = avail + occ;
+                            pctEl.innerText = ((occ / total) * 100).toFixed(1) + '%';
+                        }
+                    }
+                }
+            }
+            const authTotal = parentDoc.getElementById('auth-total');
+            if (authTotal && Math.random() > 0.8) {
+                let val = parseInt(authTotal.innerText);
+                authTotal.innerText = val + 1;
+            }
+        };
+        setInterval(updateMetrics, 4000);
+    })();
+    </script>
+    """,
+    height=0
+)
+
+
+
+
